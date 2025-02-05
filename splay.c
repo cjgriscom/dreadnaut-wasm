@@ -1,5 +1,5 @@
-/* splay.c  - code for splay trees    Version of August 18, 2001.
- * Author: Brendan McKay  bdm@cs.anu.edu.au
+/* splay.c  - code for splay trees    Version of March 23, 2024
+ * Author: Brendan McKay  brendan.mckay@anu.edu.au
 
    This file is not meant to be compiled separately, but to be
    #included into other programs.  Use it like this:
@@ -10,18 +10,29 @@
    Also define a macro SPLAYNODESIZE giving the size of an object
    of type SPLAYNODE, unless  sizeof(SPLAYNODE) is adequate.
 
-   2. Declare a variable of type SPLAYNODE* to point to the root
+   2. Optionally declare SPLAY_ALLOC so that SPLAY_ALLOC(SPLAYNODESIZE)
+   allocates an object of type SPLAYNODE and returns its address, and
+   SPLAY_FREE so that SPLAY_FREE(ptr) frees an object allocated that way.
+   SPLAY_ALLOC should return NULL if allocation fails.
+   Either define both of these or neither. The defaults are
+   SPLAY_ALLOC=malloc and SPLAY_FREE=free.
+
+   3. Declare a pointer variable of type SPLAYNODE* to point to the root
    of the tree, and initialise it to NULL.
 
-   3. Declare SCAN_ARGS to be the additional arguments needed for
-   splay_scan(), including a leading comma.
+   4. Define SCAN_ARGS to be the additional arguments needed for
+   splay_scan(), including a leading comma unless there are no arguments.
 
-   4. Declare ACTION(p) for what splay_scan() should do for node p.
+   5. Define ACTION(p) for what splay_scan() should do for node p.
 
-   5. Declare INSERT_ARGS to be the additional arguments needed 
-   for splay_insert(), including a leading comma.
+   6. Define INSERT_ARGS to be the additional arguments needed for
+   splay_insert(), including a leading comma unless there are no arguments.
 
-   6. Declare COMPARE(p) to compare INSERT_ARGS or LOOKUP_ARGS to the
+   7. Optionally declare LOOKUP_ARGS to be the additional arguments needed
+   for splay_lookup(), including a leading comma unless there are no
+   arguments.  The default for LOOKUP_ARGS is to be the same as INSERT_ARGS.
+
+   8. Define COMPARE(p) to compare INSERT_ARGS or LOOKUP_ARGS to the
    contents of node p.  <0, 0, >0 if INSERT_ARGS is greater, equal,
    less, than p.  This has to be an expression with a value, so you will
    need to make it a procedure call if the comparison is complicated.
@@ -29,29 +40,25 @@
    If you are using something like strcmp, the correct order is
    strcmp( INSERT_ARGS, p ).
 
-   7. Declare PRESENT(p) for what to do if INSERT_ARGS is already
+   9. Define PRESENT(p) for what to do if INSERT_ARGS is already
    present, in node p.  There is a spare int variable i available.
    Typically, this might update some data in the node p.
 
-   8. Declare NOT_PRESENT(p) for what to do if INSERT_ARGS is not
+   10. Define NOT_PRESENT(p) for what to do if INSERT_ARGS is not
    in the tree and p is a fresh node to hold it.  No need to set
    the left, right, and parent fields.  Use i here too if you like.
    Typically, this might initialise the data in node p.
 
-	PRESENT(p) and NOT_PRESENT(p) should not manipulate the
-        tree pointers.  However, each of them can include a
-        return if you don't want to change the tree.  In the
-        case of NOT_PRESENT(p), do free(p) before returning.
+   PRESENT(p) and NOT_PRESENT(p) should not manipulate the tree pointers.
+   However, each of them can include a return if you don't want to change
+   the tree.  In the case of NOT_PRESENT(p), do SPLAY_FREE(p) before
+   returning.
 
-        In the case of PRESENT(p), it is also legal to delete the
-        node from the tree using SCAN_DELETE(to_root,p).  In that
-        case you MUST return immediately afterwards.
+   In the case of PRESENT(p), it is also legal to delete the node
+   from the tree using SCAN_DELETE(to_root,p). In that case you MUST
+   return immediately afterwards.
 
-   9. Declare LOOKUP_ARGS to be the additional arguments needed
-   for splay_lookup(), including a leading comma.  The default
-   for LOOKUP_ARGS is to be the same as INSERT_ARGS.
-
-  10. #include "splay.c"
+   11. #include "splay.c"
 
 
   Calls:
@@ -86,9 +93,17 @@
 
   It is possible to have splay trees of several types in the same
   program.  Just include "splay.c" several times, with the procedure
-  names SPLAY, SPLAY_SCAN, SPLAY_LOOKUP, SPLAY_INSERT, SPLAY_DELETE
-  defined to distinct names.  You have to redefine them all even if
-  you aren't using them all.
+  names SPLAY, SPLAY_SCAN, SPLAY_LOOKUP, SPLAY_INSERT, SPLAY_DELETE,
+  defined to distinct names (and SPLAY_ALLOC, SPLAY_FREE if you defined
+  them).  You have to redefine them all even if you aren't using them all.
+
+  Threads:
+
+    You cannot use the same splay tree from different threads at the
+    same time. You need to use semaphores or other means to serialize
+    access. On the other hand, different splay trees are entirely
+    independent, so it is fine for different threads to use their
+    own private splay trees.
 */
 
 #define S_A 0
@@ -115,6 +130,11 @@
 #define SPLAY_DELETE splay_delete
 #endif
 
+#ifndef SPLAY_ALLOC
+#define SPLAY_ALLOC malloc
+#define SPLAY_FREE free
+#endif
+
 /*********************************************************************/
 
 void
@@ -129,28 +149,28 @@ SPLAY_SCAN(SPLAYNODE *root SCAN_ARGS)
 
     while (p)
     {
-	switch (code)    /* deliberate flow-ons */
-	{
-	 case S_A:
-	    if (p->left)
-	    {
-		p = p->left;
-		break;
-	    }
-	 case S_L:
-	    ACTION(p);
-	    if (p->right)
-	    {
-		p = p->right;
-		code = S_A;
-		break;
-	    }
-	 case S_R:
-	    if (p->parent && p->parent->left == p) code = S_L;
-	    else                                   code = S_R;
-	    p = p->parent;
-	    break;
-	}
+        switch (code)    /* deliberate flow-ons */
+        {
+         case S_A:
+            if (p->left)
+            {
+                p = p->left;
+                break;
+            }
+         case S_L:
+            ACTION(p);
+            if (p->right)
+            {
+                p = p->right;
+                code = S_A;
+                break;
+            }
+         case S_R:
+            if (p->parent && p->parent->left == p) code = S_L;
+            else                                   code = S_R;
+            p = p->parent;
+            break;
+        }
     }
 }
 
@@ -169,72 +189,72 @@ SPLAY(SPLAYNODE *p)
 
     while (p->parent)
     {
-	a = p->left;
-	b = p->right;
-	q = p->parent;
-	if (q->left == p)
-	{
-	    code = S_L;
-	    c = q->right;
-	}
-	else
-	{
-	    code = S_R;
-	    c = q->left;
-	}
-	r = q->parent;
-	if (r)
-	{
-	    if (r->left == q) code = (code == S_L ? S_LL : S_LR);
-	    else              code = (code == S_L ? S_RL : S_RR);
-	    s = r->parent;
-	    p->parent = s;
-	    if (s)
-	    {
-		if (s->left == r) s->left = p;
-		else              s->right = p;
-	    }
-	}
-	else
-	{
-	    p->parent = NULL;
-	}
-	
-	switch (code)
-	{
-	 case S_L:
-	    RCHILD(p,q);
-	    LCHILD(q,b);
-	    break;
-	 case S_R:
-	    LCHILD(p,q);
-	    RCHILD(q,a);
-	    break;
-	 case S_LL:
-	    RCHILD(p,q);
-	    RCHILD(q,r);
-	    LCHILD(q,b);
-	    LCHILD(r,c);
-	    break;
-	 case S_RR:
-	    LCHILD(p,q);
-	    LCHILD(q,r);
-	    RCHILD(r,c);
-	    RCHILD(q,a);
-	    break;
-	 case S_LR:
-	    LCHILD(p,q);
-	    RCHILD(p,r);
-	    RCHILD(q,a);
-	    LCHILD(r,b);
-	    break;
-	 case S_RL:
-	    LCHILD(p,r);
-	    RCHILD(p,q);
-	    RCHILD(r,a);
-	    LCHILD(q,b);
-	    break;
-	}
+        a = p->left;
+        b = p->right;
+        q = p->parent;
+        if (q->left == p)
+        {
+            code = S_L;
+            c = q->right;
+        }
+        else
+        {
+            code = S_R;
+            c = q->left;
+        }
+        r = q->parent;
+        if (r)
+        {
+            if (r->left == q) code = (code == S_L ? S_LL : S_LR);
+            else              code = (code == S_L ? S_RL : S_RR);
+            s = r->parent;
+            p->parent = s;
+            if (s)
+            {
+                if (s->left == r) s->left = p;
+                else              s->right = p;
+            }
+        }
+        else
+        {
+            p->parent = NULL;
+        }
+        
+        switch (code)
+        {
+         case S_L:
+            RCHILD(p,q);
+            LCHILD(q,b);
+            break;
+         case S_R:
+            LCHILD(p,q);
+            RCHILD(q,a);
+            break;
+         case S_LL:
+            RCHILD(p,q);
+            RCHILD(q,r);
+            LCHILD(q,b);
+            LCHILD(r,c);
+            break;
+         case S_RR:
+            LCHILD(p,q);
+            LCHILD(q,r);
+            RCHILD(r,c);
+            RCHILD(q,a);
+            break;
+         case S_LR:
+            LCHILD(p,q);
+            RCHILD(p,r);
+            RCHILD(q,a);
+            LCHILD(r,b);
+            break;
+         case S_RL:
+            LCHILD(p,r);
+            RCHILD(p,q);
+            RCHILD(r,a);
+            LCHILD(q,b);
+            break;
+        }
     }
 }
 
@@ -246,7 +266,7 @@ SPLAY_INSERT(SPLAYNODE **to_root  INSERT_ARGS)
    is at the root of the tree regardless of whether a new node
    needed to be created for it. */
 {
-    int i,cmp;
+    int i,cmp;   /* i is present for possible macros */
     SPLAYNODE *p,*ppar,*new_node;
 
     p = *to_root;
@@ -257,9 +277,9 @@ SPLAY_INSERT(SPLAYNODE **to_root  INSERT_ARGS)
         cmp = COMPARE(p);
         if (cmp == 0)
         {
-	    PRESENT(p);
-	    SPLAY(p);
-	    *to_root = p;
+            PRESENT(p);
+            SPLAY(p);
+            *to_root = p;
             return;
         }
         else if (cmp < 0)
@@ -274,9 +294,9 @@ SPLAY_INSERT(SPLAYNODE **to_root  INSERT_ARGS)
         }
     }
 
-    if ((new_node = (SPLAYNODE*)malloc(SPLAYNODESIZE)) == NULL)
+    if ((new_node = (SPLAYNODE*)SPLAY_ALLOC(SPLAYNODESIZE)) == NULL)
     {
-        fprintf(stderr,">E malloc failed in splay_insert()\n");
+        fprintf(stderr,">E SPLAY_ALLOC failed in splay_insert()\n");
         exit(1);
     }
 
@@ -287,17 +307,17 @@ SPLAY_INSERT(SPLAYNODE **to_root  INSERT_ARGS)
     if (cmp == 0)
     {
         *to_root = new_node;
-	new_node->parent = NULL;
+        new_node->parent = NULL;
     }
     else if (cmp < 0)
     {
         ppar->left = new_node;
-	new_node->parent = ppar;
+        new_node->parent = ppar;
     }
     else
     {
         ppar->right = new_node;
-	new_node->parent = ppar;
+        new_node->parent = ppar;
     }
 
     SPLAY(new_node);
@@ -309,7 +329,8 @@ SPLAY_INSERT(SPLAYNODE **to_root  INSERT_ARGS)
 SPLAYNODE*
 SPLAY_LOOKUP(SPLAYNODE **to_root  LOOKUP_ARGS)
 /* Do a look-up operation.  If found, return a pointer to the
-   node containing it.  If not, return NULL. */
+   node containing it.  If not, return NULL.  The tree is not
+   modified. */
 {
     int i,cmp;   /* i is available for COMPARE */
     SPLAYNODE *p;
@@ -322,8 +343,8 @@ SPLAY_LOOKUP(SPLAYNODE **to_root  LOOKUP_ARGS)
         cmp = COMPARE(p);
         if (cmp == 0)
         {
-	    SPLAY(p);
-	    *to_root = p;
+            SPLAY(p);
+            *to_root = p;
             return p;
         }
         else if (cmp < 0)
@@ -354,10 +375,10 @@ SPLAY_DELETE(SPLAYNODE **to_root, SPLAYNODE *p)
 
     if (!p->right)
     {
-	*to_root = p->left;
+        *to_root = p->left;
         if (p->left) p->left->parent = NULL;
-	free(p);
-	return;
+        SPLAY_FREE(p);
+        return;
     }
 
     /* right child but no left child */
@@ -366,7 +387,7 @@ SPLAY_DELETE(SPLAYNODE **to_root, SPLAYNODE *p)
     {
         *to_root = p->right;
         p->right->parent = NULL;
-        free(p);
+        SPLAY_FREE(p);
         return;
     }  
 
@@ -384,7 +405,7 @@ SPLAY_DELETE(SPLAYNODE **to_root, SPLAYNODE *p)
      if (p->left) p->left->parent = q;
      if (p->right) p->right->parent = q;
      *to_root = q;
-     free(p);
+     SPLAY_FREE(p);
 }
 
 /*********************************************************************/
@@ -402,9 +423,9 @@ SPLAY_DUMP(SPLAYNODE *p DUMP_ARGS)
     if (p == NULL) return;
 
     if (p->right && p->right->parent != p)
-	fprintf(stderr,"parent misaligned at %p-%p ************\n",p,p->right);
+        fprintf(stderr,"parent misaligned at %p-%p ************\n",p,p->right);
     if (p->left && p->left->parent != p)
-	fprintf(stderr,"parent misaligned at %p-%p ************\n",p,p->left);
+        fprintf(stderr,"parent misaligned at %p-%p ************\n",p,p->left);
 
     SPLAY_DUMP(p->right  DUMP_RIGHT);
     DUMP_ACTION(p);

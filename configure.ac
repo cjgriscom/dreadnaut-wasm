@@ -1,5 +1,5 @@
 # Process this file with autoconf to produce a configure script.
-AC_INIT
+AC_INIT([nauty],[2.8.9],[brendan.mckay@anu.edu.au])
 AC_CONFIG_SRCDIR([nauty-h.in])
 
 # ======================================================================
@@ -21,8 +21,6 @@ AC_DEFUN([AC_TRY_CFLAGS],
         ifelse([$3],[],[:],[$3])
     fi])
 
-dnl CVT_YESNO([YES-NO VARIABLE],[0-1 VARIABLE])
-dnl Make a 0-1 output variable from a yes/no shell variable
 AC_DEFUN([CVT_YESNO],[if test "x$$1" = xyes; then
   $2=1
 else
@@ -30,11 +28,35 @@ else
 fi
 AC_SUBST($2)])
 
+dnl Check for noreturn attribute.  Note that this is the attribute for C and
+dnl might not work for C++. nauty.h does not use it.
+AC_DEFUN([AX_NORET], [
+  AC_MSG_CHECKING([for noreturn attribute])
+   for ax_noret_keyword in '[[noreturn]]' '_Noreturn' '__attribute__((noreturn))' none; do
+       AS_CASE([$ax_noret_keyword],
+          [none], [ac_cv_noret=none ; break],
+          [AC_COMPILE_IFELSE([AC_LANG_PROGRAM(
+              [[#include <stdlib.h>
+                $ax_noret_keyword void f() { exit(1); } ]],
+              [[f();]]
+            )],
+            [ac_cv_noret=$ax_noret_keyword ; break],
+            [ac_cv_noret=none]
+          )]
+        )
+    done 
+  AC_MSG_RESULT([$ac_cv_noret])
+
+  AS_IF([test "$ac_cv_noret" != "none"],
+    [AC_DEFINE_UNQUOTED([NORET],[$ac_cv_noret],[If the compiler supports a noreturn attribute, define it to that here])
+     m4_ifnblank([$1],[$1],[[:]])],
+    [m4_ifnblank([$2],[$2],[[:]])])
+])
+
 dnl Check for thread-local attribute
 AC_DEFUN([AX_TLS], [
   AC_MSG_CHECKING([for thread local storage (TLS) class])
-  AC_CACHE_VAL([ac_cv_tls],
-   [for ax_tls_keyword in thread_local _Thread_local __thread '__declspec(thread)' none; do
+   for ax_tls_keyword in thread_local _Thread_local __thread '__declspec(thread)' none; do
        AS_CASE([$ax_tls_keyword],
           [none], [ac_cv_tls=none ; break],
           [AC_COMPILE_IFELSE([AC_LANG_PROGRAM(
@@ -45,8 +67,7 @@ AC_DEFUN([AX_TLS], [
             [ac_cv_tls=none]
           )]
         )
-    done ]
-  )
+    done
   AC_MSG_RESULT([$ac_cv_tls])
 
   AS_IF([test "$ac_cv_tls" != "none"],
@@ -99,6 +120,13 @@ AC_ARG_ENABLE([wordsize],
 AS_IF([test "x$enable_wordsize" = x16],[default_wordsize=16],[default_wordsize=0])
 AS_IF([test "x$enable_wordsize" = x32],[default_wordsize=32])
 AS_IF([test "x$enable_wordsize" = x64],[default_wordsize=64])
+AS_IF([test "x$enable_wordsize" = x128],[default_wordsize=128])
+
+dnl --disable-wordsize128 disables 128-bit components
+AC_ARG_ENABLE([wordsize128],
+   AS_HELP_STRING([--disable-wordsize128], [Disable 128-bit components]),
+   [enablearg=given], [enablearg=notgiven])
+AS_IF([test $enablearg = notgiven || test "x$enable_popcnt" = xyes],[allow_128=1],[allow_128=0])
 
 # ======================================================================
 # Next we get to work
@@ -128,6 +156,13 @@ case "$build" in
      is_cygwin=0 ;;
 esac
 
+case "$host" in
+  *freebsd*)
+     is_freebsd=1 ;;
+  *)
+     is_freebsd=0 ;;
+esac
+
 dnl Checks for C compiler and sets CFLAGS if not set by user
 user_cflags="$CFLAGS"
 AC_PROG_CC
@@ -135,12 +170,13 @@ CFLAGS=$user_cflags
 MORECFLAGS=""
 dnl  we need  AC_SYS_LARGEFILE and AC_FUNC_FSEEKO
 AC_SYS_LARGEFILE
-AS_IF([test "x$ac_cv_sys_file_offset_bits" = xno],[ac_cv_sys_file_offset_bits=0])
+AS_IF([test "x$ac_cv_sys_file_offset_bits" = "xno"],[ac_cv_sys_file_offset_bits=0])
+AS_IF([test "x$ac_cv_sys_file_offset_bits" = "x"],[ac_cv_sys_file_offset_bits=0])
 AC_SUBST(ac_cv_sys_file_offset_bits)
 
 AS_IF([test "x$user_cflags" = x || test "x$user_cflags" = x-m32],
 [
-  AS_IF([test "$CC" = "icc"],
+  AS_IF([test "$CC" = "icc" || test "$CC" = "icx"],
     [AC_TRY_CFLAGS([-O3],[CFLAGS="$CFLAGS -O3"]);
      AS_IF([test "x$ac_cv_try_cflags_ok" = xno],
         [AC_TRY_CFLAGS([-O2],[CFLAGS="$CFLAGS -O2"],[CFLAGS="$CFLAGS -O"])])],
@@ -153,12 +189,12 @@ AS_IF([test "x$user_cflags" = x || test "x$user_cflags" = x-m32],
     ])
 ])
  
-case "$CC" in
-  gcc*)
-     gccver=`"$CC" -dumpversion` ;;
-  *)
-     gccver=0.0.0 ;;
-esac
+#case "$CC" in
+#  gcc*)
+#     gccver=`$CC -dumpfullversion` ;;
+#  *)
+#     gccver=0.0.0 ;;
+#esac
 
 dnl Checks relevant to Cygwin and other Windows things
 AC_EXEEXT
@@ -178,21 +214,42 @@ CVT_YESNO(ac_cv_header_signal_h,header_signal_h)
 CVT_YESNO(ac_cv_header_limits_h,header_limits_h)
 CVT_YESNO(ac_cv_header_stdint_h,header_stdint_h)
 
+# The code here is for locating the crypto library, not currently used.
+# AC_ARG_WITH([crypto],AS_HELP_STRING([--with-crypto=DIR],[specify location of crypto library]),
+#   [cryptoloc=$with_crypto],[cryptoloc=])
+#AS_IF([test "x$cryptoloc" == "x"], [crypto_inc= ; crypto_lib="-lcrypto"],
+#   [crypto_inc="-I$cryptoloc/include" ; crypto_lib="-L$cryptoloc/lib -lcrypto"])
+#
+#cppflags_save=$CPPFLAGS
+#ldflags_save=$LDFLAGS
+#CPPFLAGS=$crypto_inc
+#LDFLAGS=$crypto_lib
+#
+#AC_MSG_CHECKING(for crypto library)
+#AC_CHECK_HEADERS(openssl/sha.h)
+#AS_IF([test "x$ac_cv_header_openssl_sha_h" == "xyes"],
+#  [AC_CHECK_LIB([crypto],[SHA256],
+#    [have_crypto=1], [have_crypto=0])],
+#  [have_crypto=0])
+#AS_IF([test $have_crypto -eq 0],[crypto_inc= ; crypto_lib=],[])
+#AC_SUBST(have_crypto)
+#AC_SUBST(crypto_inc)
+#AC_SUBST(crypto_lib)
+
+CPPFLAGS=$cppflags_save
+LDFLAGS=$ldflags_save
+
 AC_TYPE_PID_T
 CVT_YESNO(ac_cv_type_pid_t,have_pid_t)
 
 AC_CHECK_DECL([ftell],ftell_dec=1,ftell_dec=0)
 AC_SUBST(ftell_dec)
-
 AC_CHECK_DECL([popen],popen_dec=1,popen_dec=0)
 AC_SUBST(popen_dec)
-
 AC_CHECK_DECL([fdopen],fdopen_dec=1,fdopen_dec=0)
 AC_SUBST(fdopen_dec)
-
 AC_CHECK_DECL([putenv],putenv_dec=1,putenv_dec=0)
 AC_SUBST(putenv_dec)
-
 AC_CHECK_DECL([setenv],setenv_dec=1,setenv_dec=0)
 AC_SUBST(setenv_dec)
 
@@ -220,7 +277,10 @@ AC_EGREP_CPP(yes,
 AC_SUBST(has_math_inf)
 AC_MSG_RESULT($has_math_inf)
 
-dnl Checks for sizes of integer types; avoid 64-bit if necessary
+dnl Checks for sizes of integer types
+testprogs="dreadtest dreadtestS dreadtestS1 dreadtest4K"
+testprogs="$testprogs dreadtest1 dreadtestW dreadtestW1"
+testprogs="$testprogs dreadtestL dreadtestL1"
 AC_CHECK_SIZEOF([int])
 AC_SUBST(ac_cv_sizeof_int)
 AC_CHECK_SIZEOF([long])
@@ -229,22 +289,28 @@ AC_CHECK_SIZEOF([long long])
 AC_SUBST(ac_cv_sizeof_long_long)
 AC_CHECK_SIZEOF([void*])
 AC_SUBST(ac_cv_sizeof_voidp)
-AC_CHECK_SIZEOF([__int128])
-AC_SUBST(ac_cv_sizeof___int128)
-AC_CHECK_SIZEOF([__int128_t])
-AC_SUBST(ac_cv_sizeof___int128_t)
-lok=0
-testprogs="dreadtest dreadtestS dreadtestS1 dreadtest4K"
-testprogs="$testprogs dreadtest1 dreadtestW dreadtestW1"
-
-AS_IF([test $ac_cv_sizeof_long_long -eq 8],
-      [lok=1
-       testprogs="$testprogs dreadtestL1 dreadtestL"],
-      [AS_IF([test $ac_cv_sizeof_long -eq 8],
-             [lok=1])
-    ])
-AC_SUBST(lok)
+AS_IF([test $allow_128 -eq 1],
+ [AC_CHECK_SIZEOF([__uint128_t])
+  AC_CHECK_SIZEOF([unsigned __int128])],
+ [ac_cv_sizeof___uint128_t=0
+  ac_cv_sizeof_unsigned___int128=0])
+AS_IF([test $ac_cv_sizeof___uint128_t -eq 16 || test $ac_cv_sizeof_unsigned___int128 -eq 16],
+ [runonetestQ='runonetest "$1" "$2" "$3"'
+  Qlibs_or_null="libnautyQ1.la libnautyQ.la"
+  TLSQlibs_or_null="libnautyTQ1.la libnautyTQ.la"
+  testprogs="$testprogs dreadtestQ dreadtestQ1"
+  nautests="nautest nautestS nautestW nautestL nautestQ"],
+ [runonetestQ=true
+  Qlibs_or_null=
+  TLSQlibs_or_null=
+  nautests="nautest nautestS nautestW nautestL"]) 
+AC_SUBST(ac_cv_sizeof___uint128_t)
+AC_SUBST(ac_cv_sizeof_unsigned___int128)
+AC_SUBST(runonetestQ)
+AC_SUBST(Qlibs_or_null)
+AC_SUBST(TLSQlibs_or_null)
 AC_SUBST(testprogs)
+AC_SUBST(nautests)
 
 dnl Checks for library functions.
 AC_CHECK_FUNC(isatty,have_isatty=1,have_isatty=0)
@@ -253,6 +319,10 @@ AC_CHECK_FUNC(time,have_time=1,have_time=0)
 AC_SUBST(have_time)
 AC_CHECK_FUNC(gettimeofday,have_gettimeofday=1,have_gettimeofday=0)
 AC_SUBST(have_gettimeofday)
+AC_CHECK_FUNC(clock_gettime,have_clock_gettime=1,have_clock_gettime=0)
+AC_SUBST(have_clock_gettime)
+AC_CHECK_FUNC(clock,have_clock=1,have_clock=0)
+AC_SUBST(have_clock)
 AC_CHECK_FUNC(times,have_times=1,have_times=0)
 AC_SUBST(have_times)
 AC_CHECK_FUNC(getrusage,have_getrusage=1,have_getrusage=0)
@@ -289,6 +359,7 @@ AS_IF([test "$allow_popcnt" -eq 1],
 test -f /proc/cpuinfo && grep -i popcnt /proc/cpuinfo >/dev/null && have_hwpopcnt=1 
 test $have_hwpopcnt -eq 0 && sysctl machdep.cpu.features 2>/dev/null | grep -i popcnt >/dev/null && have_hwpopcnt=1
 test $have_hwpopcnt -eq 0 && isainfo -x -v 2>/dev/null | grep -i popc >/dev/null && have_hwpopcnt=1
+test $have_hwpopcnt -eq 0 && isainfo -v 2>/dev/null | grep -i popc >/dev/null && have_hwpopcnt=1
 test $have_hwpopcnt -eq 0 && test $is_ARM64 -eq 1 && have_hwpopcnt=1
 ],
       [have_hwpopcnt=0
@@ -390,6 +461,7 @@ test -f /proc/cpuinfo && egrep -i "abm|bmi1" /proc/cpuinfo >/dev/null && have_hw
 test $have_hwlzcnt -eq 0 && sysctl machdep.cpu.features 2>/dev/null | egrep -i "bmi1|abm" >/dev/null && have_hwlzcnt=1
 test $have_hwlzcnt -eq 0 && sysctl machdep.cpu.extfeatures 2>/dev/null | egrep -i "lzcnt" >/dev/null && have_hwlzcnt=1
 test $have_hwlzcnt -eq 0 && isainfo -x -v 2>/dev/null | egrep -i "bmi1|abm" >/dev/null && have_hwlzcnt=1
+test $have_hwlzcnt -eq 0 && isainfo -v 2>/dev/null | egrep -i "bmi1|abm" >/dev/null && have_hwlzcnt=1
 test $have_hwlzcnt -eq 0 && test $is_ARM64 -eq 1 && have_hwlzcnt=1 ],
       [have_hwlzcnt=0])
 AC_MSG_RESULT($have_hwlzcnt)
@@ -429,9 +501,15 @@ AC_SUBST(shortg_or_null)
 
 AC_CHECK_FUNC(getc_unlocked,have_getc_unlocked=1,have_getc_unlocked=0)
 AC_CHECK_FUNC(flockfile,have_flockfile=1,have_flockfile=0)
+AC_SUBST(have_flockfile)
 AS_IF([test $have_getc_unlocked -eq 1 && test $have_flockfile -eq 1],
       [stdio_nolock=1],[stdio_nolock=0])
 AC_SUBST(stdio_nolock)
+
+dnl Set noreturn attribute
+AX_NORET([noret_supported=1],[noret_supported=0])
+AS_IF([test "$noret_supported" -eq 0],[ac_cv_noret=])
+AC_SUBST(ac_cv_noret)
 
 dnl Set thread-local variables
 AX_TLS([tls_supported=1],[tls_supported=0])
@@ -452,6 +530,8 @@ AS_IF([test $is_cygwin -eq 1],
       [ AC_PATH_PROGS(sort_prog,[gsort sort],no_sort_found,
              [/usr/bin$PATH_SEPARATOR/bin$PATH_SEPARATOR$PATH])],
       [ AC_CHECK_PROGS(sort_prog,[gsort sort],no_sort_found)])
+AS_IF([test $is_cygwin -eq 1],[cygnoun="-no-undefined"],[cygnoun=])
+AC_SUBST(cygnoun)
 
 AC_MSG_CHECKING(if sort supports the -k switch)
 AS_IF([{ $sort_prog -k "2,3" </dev/null >/dev/null 2>&1 ; }],
@@ -459,13 +539,35 @@ AS_IF([{ $sort_prog -k "2,3" </dev/null >/dev/null 2>&1 ; }],
 AC_SUBST(sort_newparams_ok)
 AC_MSG_RESULT($sort_newparams_ok)
 
+AC_MSG_CHECKING(if sort supports the -S switch)
+AS_IF([{ $sort_prog -S 1M </dev/null >/dev/null 2>&1 ; }],
+      [sort_size_ok=1], [sort_size_ok=0])
+AC_SUBST(sort_size_ok)
+AC_MSG_RESULT($sort_size_ok)
+
 edit_msg="++++++ This file is automatically generated, don't edit it by hand! ++++++"
 AC_SUBST(edit_msg)
 
 AC_PROG_MKDIR_P
 AC_PROG_INSTALL
 
+AS_IF([test $is_freebsd -eq 1],
+   [PKGdir='${prefix}/libdata/pkgconfig'],
+   [PKGdir='${libdir}/pkgconfig'])
+AC_ARG_WITH([pkgconfigdir],
+   [AS_HELP_STRING([--with-pkgconfigdir=DIR], [ directory for .pc files])],
+   [PKGdir=$with_pkgconfigdir],[])
+pkgconfigdir=$PKGdir
+AC_SUBST(pkgconfigdir)
+
+dnl Existence of gunzip program
+AC_CHECK_PROGS(gunzip_prog,[gunzip],none)
+AS_IF([test "$gunzip_prog" = "gunzip"],[have_gunzip=1],[have_gunzip=0])
+AC_SUBST(have_gunzip)
+
+LT_INIT
+
 AC_CONFIG_FILES([makefile:makefile.in nauty.h:nauty-h.in
     naututil.h:naututil-h.in gtools.h:gtools-h.in
-    nauty.pc:nauty.pc.in])
+    nauty.pc:nauty-pc.in runalltests:runalltests.in])
 AC_OUTPUT

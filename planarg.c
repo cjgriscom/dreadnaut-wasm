@@ -1,5 +1,5 @@
 /* planarg : test for planarity and find embedding or obstruction */
-/* Version 2.0: B D McKay, 16 April 2020 */
+/* Version 2.1: B D McKay, 20 May 2024 */
 
 #define USAGE "planarg [-v] [-nVq] [-p|-u] [infile [outfile]]"
 
@@ -12,6 +12,7 @@
     -V  Write report on every input\n\
     -u  Don't write anything, just count\n\
     -p  Write in planar_code if planar (without -p, same format as input)\n\
+    -P  Like -p but big-endian (same for <= 255 vertices)\n\
     -k  Follow each non-planar output with an obstruction in sparse6\n\
         format (implies -v, incompatible with -p)\n\
     -n  Suppress checking of the result\n\
@@ -27,17 +28,17 @@
 /*************************************************************************/
 
 static void
-write_planarcode(FILE *f, t_ver_sparse_rep *VR, t_adjl_sparse_rep *A,
+write_planarcode_big(FILE *f, t_ver_sparse_rep *VR, t_adjl_sparse_rep *A,
                  t_embed_sparse_rep *ER, int n, int ne)
-/* Write the embedding to f in planar_code */
+/* Write the embedding to f in planar_code; big-endian */
 {
     int bytes;
     size_t i,j,len,k,k0;
     unsigned int w;
     DYNALLSTAT(unsigned char,buff,buff_sz);
-#define PUT1(x) buff[j++]=(x);
-#define PUT2(x) w=(x); buff[j++]=(w>>8)&0xFF; buff[j++]=w&0xff;
-#define PUT4(x) w=(x); buff[j++]=(w>>24)&0xFF; buff[j++]=(w>>16)&0xff; \
+#define BPUT1(x) buff[j++]=(x);
+#define BPUT2(x) w=(x); buff[j++]=(w>>8)&0xFF; buff[j++]=w&0xff;
+#define BPUT4(x) w=(x); buff[j++]=(w>>24)&0xFF; buff[j++]=(w>>16)&0xff; \
              buff[j++]=(w>>8)&0xFF; buff[j++]=w&0xff;
 
     if (n <= 255)        bytes = 1;
@@ -53,60 +54,138 @@ write_planarcode(FILE *f, t_ver_sparse_rep *VR, t_adjl_sparse_rep *A,
     if (bytes == 1)
     {
         j = 0;
-        PUT1(n);
+        BPUT1(n);
         for (i = 0; i < n; ++i)
         {
             k = k0 = VR[i].first_edge;
             if (k != NIL)
                 do
                 {
-                    PUT1(A[ER[k].in_adjl].end_vertex+1);
+                    BPUT1(A[ER[k].in_adjl].end_vertex+1);
                     k = ER[k].next;
                 } while (k != k0);
-            PUT1(0);
+            BPUT1(0);
         }
     }
     else if (bytes == 2)
     {
         j = 0;
-        PUT1(0);
-        PUT2(n);
+        BPUT1(0);
+        BPUT2(n);
         for (i = 0; i < n; ++i)
         {
             k = k0 = VR[i].first_edge;
             if (k != NIL)
                 do
                 {
-                    PUT2(A[ER[k].in_adjl].end_vertex+1);
+                    BPUT2(A[ER[k].in_adjl].end_vertex+1);
                     k = ER[k].next;
                 } while (k != k0);
-            PUT2(0);
+            BPUT2(0);
         }
     }
     else
     {
         j = 0;
-        PUT1(0);
-        PUT2(0);
-        PUT4(n);
+        BPUT1(0);
+        BPUT2(0);
+        BPUT4(n);
         for (i = 0; i < n; ++i)
         {
             k = k0 = VR[i].first_edge;
             if (k != NIL)
                 do
                 {
-                    PUT4(A[ER[k].in_adjl].end_vertex+1);
+                    BPUT4(A[ER[k].in_adjl].end_vertex+1);
                     k = ER[k].next;
                 } while (k != k0);
-            PUT4(0);
+            BPUT4(0);
         }
     }
 
     if (fwrite((void*)buff,1,len,f) != len)
+        gt_abort(">E write_planarcode : error on writing\n");
+}
+
+
+static void
+write_planarcode_little(FILE *f, t_ver_sparse_rep *VR, t_adjl_sparse_rep *A,
+                 t_embed_sparse_rep *ER, int n, int ne)
+/* Write the embedding to f in planar_code; little-endian */
+{
+    int bytes;
+    size_t i,j,len,k,k0;
+    unsigned int w;
+    DYNALLSTAT(unsigned char,buff,buff_sz);
+#define LPUT1(x) buff[j++]=(x);
+#define LPUT2(x) w=(x); buff[j++]=w&0xff; buff[j++]=(w>>8)&0xFF;
+#define LPUT4(x) w=(x); buff[j++]=w&0xff; buff[j++]=(w>>8)&0xFF; \
+             buff[j++]=(w>>16)&0xff; buff[j++]=(w>>24)&0xFF;
+
+    if (n <= 255)        bytes = 1;
+    else if (n <= 65535) bytes = 2;
+    else                 bytes = 4;
+
+    len = bytes * (1 + n + 2*(size_t)ne);
+    if (bytes == 2)      len += 1;
+    else if (bytes == 4) len += 3;
+
+    DYNALLOC1(unsigned char,buff,buff_sz,len,"planarg");
+
+    if (bytes == 1)
     {
-        fprintf(stderr,">E write_planarcode : error on writing\n");
-        ABORT(">E write_planarcode");
+        j = 0;
+        LPUT1(n);
+        for (i = 0; i < n; ++i)
+        {
+            k = k0 = VR[i].first_edge;
+            if (k != NIL)
+                do
+                {
+                    LPUT1(A[ER[k].in_adjl].end_vertex+1);
+                    k = ER[k].next;
+                } while (k != k0);
+            LPUT1(0);
+        }
     }
+    else if (bytes == 2)
+    {
+        j = 0;
+        LPUT1(0);
+        LPUT2(n);
+        for (i = 0; i < n; ++i)
+        {
+            k = k0 = VR[i].first_edge;
+            if (k != NIL)
+                do
+                {
+                    LPUT2(A[ER[k].in_adjl].end_vertex+1);
+                    k = ER[k].next;
+                } while (k != k0);
+            LPUT2(0);
+        }
+    }
+    else
+    {
+        j = 0;
+        LPUT1(0);
+        LPUT2(0);
+        LPUT4(n);
+        for (i = 0; i < n; ++i)
+        {
+            k = k0 = VR[i].first_edge;
+            if (k != NIL)
+                do
+                {
+                    LPUT4(A[ER[k].in_adjl].end_vertex+1);
+                    k = ER[k].next;
+                } while (k != k0);
+            LPUT4(0);
+        }
+    }
+
+    if (fwrite((void*)buff,1,len,f) != len)
+        gt_abort(">E write_planarcode : error on writing\n");
 }
 
 /*************************************************************************/
@@ -175,7 +254,7 @@ main(int argc, char *argv[])
     sparsegraph sg;
     boolean badargs;
     boolean verbose,nonplanar,quiet;
-    boolean planarcode,nowrite,nocheck;
+    boolean planarcode_big,planarcode_little,nowrite,nocheck;
     int i,j,k,n,argnum,ne,loops;
     int codetype,outcode;
     t_ver_sparse_rep *VR;
@@ -191,7 +270,7 @@ main(int argc, char *argv[])
     HELP; PUTVERSION;
 
     infilename = outfilename = NULL;
-    quiet = nowrite = planarcode = FALSE;
+    quiet = nowrite = planarcode_big = planarcode_little = FALSE;
     verbose = nonplanar = nocheck = FALSE;
 
     argnum = 0;
@@ -208,7 +287,8 @@ main(int argc, char *argv[])
                      SWBOOLEAN('v',nonplanar)
                 else SWBOOLEAN('q',quiet)
                 else SWBOOLEAN('V',verbose)
-                else SWBOOLEAN('p',planarcode)
+                else SWBOOLEAN('p',planarcode_big)
+                else SWBOOLEAN('P',planarcode_little)
                 else SWBOOLEAN('u',nowrite)
                 else SWBOOLEAN('n',nocheck)
                 else badargs = TRUE;
@@ -229,20 +309,21 @@ main(int argc, char *argv[])
         exit(1);
     }
 
-    if (planarcode && nonplanar)
+    if ((planarcode_little!=0) + (planarcode_big!=0) + (nonplanar!=0) > 1)
     {
-        fprintf(stderr,">E planarg: -p and -v are incompatible\n");
+        fprintf(stderr,">E planarg: -p, -P and -v are incompatible\n");
         exit(1);
     }
 
     if (!quiet)
     {
         fprintf(stderr,">A planarg");
-        if (nonplanar||planarcode||nowrite||nocheck)
+        if (nonplanar||planarcode_big||planarcode_little||nowrite||nocheck)
             fprintf(stderr," -");
         if (nonplanar) fprintf(stderr,"v");
         if (nowrite) fprintf(stderr,"u");
-        if (planarcode) fprintf(stderr,"p");
+        if (planarcode_big) fprintf(stderr,"p");
+        if (planarcode_little) fprintf(stderr,"P");
         if (nocheck) fprintf(stderr,"n");
         if (argnum > 0) fprintf(stderr," %s",infilename);
         if (argnum > 1) fprintf(stderr," %s",outfilename);
@@ -265,12 +346,9 @@ main(int argc, char *argv[])
             outfile = stdout;
         }
         else if ((outfile = fopen(outfilename,"w")) == NULL)
-        {
-            fprintf(stderr,"Can't open output file %s\n",outfilename);
-            gt_abort(NULL);
-        }
+            gt_abort_1(">E Can't open output file %s\n",outfilename);
 
-        if (planarcode)            outcode = PLANARCODE;
+        if (planarcode_big || planarcode_little) outcode = PLANARCODE;
         else if (codetype&SPARSE6) outcode = SPARSE6;
         else                       outcode = GRAPH6;
 
@@ -335,15 +413,17 @@ main(int argc, char *argv[])
         ER = NULL;
         t0 = CPUTIME;
         if (isplanar(V,n,A,ne,&nbr_c,&VR,&AR,&ER,&nbr_e_obs,
-                     !nocheck||planarcode,!nocheck))
+                     !nocheck||planarcode_big||planarcode_little,!nocheck))
         {
             ++nplan;
             tp += CPUTIME - t0;
             netotalp += ne;
             if (!nowrite && !nonplanar)
             {
-                if (planarcode)
-                    write_planarcode(outfile,VR,A,ER,n,ne);
+                if (planarcode_big)
+                    write_planarcode_big(outfile,VR,A,ER,n,ne);
+                else if (planarcode_little)
+                    write_planarcode_little(outfile,VR,A,ER,n,ne);
                 else
                     writelast(outfile);
                 ++nout;

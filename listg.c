@@ -1,8 +1,8 @@
-/* listg.c  version 2.3; B D McKay, Sep 2018 */
+/* listg.c  version 2.4; B D McKay, Aug 2022 */
 
 #define USAGE \
- "listg [-fp#:#l#o#Ftq] [-a|-A|-c|-d|-e|-H|-M|-W|-L|-s|-b|-G|-y|-Yxxx]" \
-       " [infile [outfile]]"
+ "listg [-fp#:#l#o#Ftq] [-a|-A|-c|-d|-e|-H|-M|-W|-L|S|-s|-b|-G|-y|-Yxxx]\n" \
+       "           [infile [outfile]]"
 
 #define HELPTEXT \
 " Write graphs in human-readable format.\n\
@@ -12,7 +12,7 @@
     -p#, -p#:#, -p#-# : only display one graph or a sequence of\n\
            graphs.  The first graph is number 1.  A second number\n\
            which is empty or zero means infinity.\n\
-	   This option won't work for incremental input.\n\
+           This option won't work for incremental input.\n\
     -a  : write as adjacency matrix, not as list of adjacencies\n\
     -A  : same as -a with a space between entries\n\
     -l# : specify screen width limit (default 78, 0 means no limit)\n\
@@ -24,8 +24,10 @@
           number of edges\n\
     -H  : write in HCP operations research format\n\
     -M  : write in Magma format\n\
+    -m  : write in Mathematica format\n\
     -W  : write matrix in Maple format\n\
     -L  : (only with -M or -W) write Laplacian rather than adjacency matrix\n\
+    -S  : (only with -M or -W) write signless Laplacian not adjacency matrix\n\
     -b  : write in Bliss format\n\
     -G  : write in GRAPE format\n\
     -y  : write in dot file format\n\
@@ -227,7 +229,7 @@ putcgraph(FILE *f, graph *g, int linelength, boolean digraph, int m, int n)
     semicolons = 0;
     for (i = 0, pg = g; i < n; ++i, pg += m)
     {
-	j0 = digraph ? -1: i-1;
+        j0 = digraph ? -1: i-1;
         if (nextelement(pg,m,j0) >= 0)
         {
             while (semicolons > 0)
@@ -285,16 +287,16 @@ putGRAPE(FILE *f, graph *g, int m, int n)
     
     for (i = 0, pg = g; i < n; ++i, pg += m)
     {
-	first = TRUE;
-	fprintf(f,"   [");
+        first = TRUE;
+        fprintf(f,"   [");
         for (j = nextelement(pg,m,-1); j >= 0; j = nextelement(pg,m,j))
-	{
-	    if (!first) fprintf(f,",");
+        {
+            if (!first) fprintf(f,",");
             fprintf(f,"%d",j+1);
-	    first = FALSE;
-	}
-	if (i < n-1) fprintf(f,"],\n");
-	else         fprintf(f,"]],\n");
+            first = FALSE;
+        }
+        if (i < n-1) fprintf(f,"],\n");
+        else         fprintf(f,"]],\n");
     }
 
     fprintf(f,"  schreierVector := Immutable([-1,-2..-%d]) )",n);
@@ -315,9 +317,9 @@ putdotty(FILE *f, graph *g, unsigned long id, char *extras, int m, int n)
     for (i = 0, pg = g; i < n; ++i, pg += m)
     {
         for (j = nextelement(pg,m,i); j >= 0; j = nextelement(pg,m,j))
-	{
+        {
             fprintf(f,"%d--%d;\n",labelorg+i,labelorg+j);
-	}
+        }
     }
 
     fprintf(f,"}\n");
@@ -403,6 +405,42 @@ putMagma(FILE *outfile, graph *g, int linelength, boolean digraph,
     fprintf(outfile,"]>;\n");
 }
 
+
+/**************************************************************************/
+
+static void
+putMathematica(FILE *outfile, graph *g, int linelength,
+         int m, int n, long index)
+{
+    int i,j;
+    set *gi;
+    boolean symm;
+    size_t count;
+
+    fprintf(outfile,"g%ld = Graph[Range[%d],{",index,n);
+
+    count = 0;
+    for (i = 0, gi = (set*)g; i < n; ++i, gi += m)
+    {
+        for (j = -1; (j = nextelement(gi,m,j)) >= 0; )
+        {
+            symm = ISELEMENT(g+m*j,i);  /* opposite exists */
+            if (j >= i || !symm)
+            {
+                ++count;
+                if (count > 1)
+                {
+                    if (count % 10 == 0) fprintf(outfile,",\n");
+                    else                fprintf(outfile,",");
+                }
+                if (symm) fprintf(outfile,"%d<->%d",i+1,j+1);
+                else      fprintf(outfile,"%d->%d",i+1,j+1);
+            }
+        }
+    }
+    fprintf(outfile,"}];\n");
+}
+
 /**************************************************************************/
 
 static void
@@ -437,43 +475,47 @@ putMaple(FILE *outfile, graph *g, int linelength, int m, int n, long index)
 /**************************************************************************/
 
 static void
-putLaplacianMagma(FILE *outfile, graph *g, int linelength,
+putLaplacianMagma(FILE *outfile, graph *g, int linelength, boolean signless,
          int m, int n, long index)
 {
-    int i,j,j0,d;
+    int i,j,d,e;
     set *gi;
+
+    if (signless) e = 1; else e = -1;
 
     fprintf(outfile,"g%ld := Matrix(%d,[\n",index,n);
 
     for (i = 0, gi = (set*)g; i < n; ++i, gi += m)
     {
-	d = 0;
-	for (j = 0; j < m; ++j) d += POPCOUNT(gi[j]);
+        d = 0;
+        for (j = 0; j < m; ++j) d += POPCOUNT(gi[j]);
 
         for (j = 0; j < n; ++j)
-	{
-	    if (j == i)
-		if (ISELEMENT(gi,j)) fprintf(outfile,"%d",d-1);
-	        else                 fprintf(outfile,"%d",d);
-	    else
-		if (ISELEMENT(gi,j)) fprintf(outfile,"%d",-1);
-	        else                 fprintf(outfile,"%d",0);
-	    if (j < n-1) fprintf(outfile,",");
+        {
+            if (j == i)
+                if (ISELEMENT(gi,j)) fprintf(outfile,"%d",d-1);
+                else                 fprintf(outfile,"%d",d);
+            else
+                if (ISELEMENT(gi,j)) fprintf(outfile,"%d",e);
+                else                 fprintf(outfile,"%d",0);
+            if (j < n-1) fprintf(outfile,",");
         }
         if (i < n-1) fprintf(outfile,",\n");
-	else         fprintf(outfile,"]);\n");
+        else         fprintf(outfile,"]);\n");
     }
 }
 
 /**************************************************************************/
 
 static void
-putLaplacianMaple(FILE *outfile, graph *g, int linelength,
+putLaplacianMaple(FILE *outfile, graph *g, int linelength, boolean signless,
                                               int m, int n, long index)
 {
-    int i,j,d;
+    int i,j,d,e;
     set *gi;
     boolean first;
+
+    if (signless) e = 1; else e = -1;
 
 #if MAPLE_MATRIX
     fprintf(outfile,"f%ld := Matrix(%d,%d,[\n",index,n,n);
@@ -483,8 +525,8 @@ putLaplacianMaple(FILE *outfile, graph *g, int linelength,
 
     for (i = 0, gi = (set*)g; i < n; ++i, gi += m)
     {
-	d = 0;
-	for (j = 0; j < m; ++j) d += POPCOUNT(gi[j]);
+        d = 0;
+        for (j = 0; j < m; ++j) d += POPCOUNT(gi[j]);
 
         fprintf(outfile,"[");
         first = TRUE;
@@ -492,12 +534,12 @@ putLaplacianMaple(FILE *outfile, graph *g, int linelength,
         {
             if (!first) fprintf(outfile,",");
             first = FALSE;
-	    if (j == i)
-		if (ISELEMENT(gi,j)) fprintf(outfile,"%d",d-1);
-	        else                 fprintf(outfile,"%d",d);
-	    else
-		if (ISELEMENT(gi,j)) fprintf(outfile,"%d",-1);
-	        else                 fprintf(outfile,"%d",0);
+            if (j == i)
+                if (ISELEMENT(gi,j)) fprintf(outfile,"%d",d-1);
+                else                 fprintf(outfile,"%d",d);
+            else
+                if (ISELEMENT(gi,j)) fprintf(outfile,"%d",e);
+                else                 fprintf(outfile,"%d",0);
         }
         fprintf(outfile,"]");
         if (i != n-1) fprintf(outfile,",\n");
@@ -519,8 +561,8 @@ main(int argc, char *argv[])
     unsigned long maxin;
     long pval1,pval2;
     boolean fswitch,pswitch,cswitch,dswitch;
-    boolean aswitch,lswitch,oswitch,Fswitch;
-    boolean Aswitch,eswitch,tswitch,qswitch;
+    boolean aswitch,lswitch,oswitch,Fswitch,Sswitch;
+    boolean Aswitch,eswitch,tswitch,mswitch,qswitch;
     boolean sswitch,Mswitch,Wswitch,Lswitch,Eswitch;
     boolean bswitch,Gswitch,yswitch,Yswitch,Hswitch;
     int linelength;
@@ -528,9 +570,9 @@ main(int argc, char *argv[])
 
     HELP; PUTVERSION;
 
-    fswitch = pswitch = cswitch = dswitch = FALSE;
+    fswitch = pswitch = cswitch = dswitch = mswitch = FALSE;
     aswitch = lswitch = oswitch = Fswitch = FALSE;
-    Aswitch = eswitch = tswitch = qswitch = FALSE;
+    Aswitch = eswitch = tswitch = qswitch = Sswitch = FALSE;
     sswitch = Mswitch = Wswitch = Lswitch = Eswitch = FALSE;
     bswitch = Gswitch = yswitch = Yswitch = Hswitch = FALSE;
     infilename = outfilename = NULL;
@@ -562,19 +604,21 @@ main(int argc, char *argv[])
                 else SWBOOLEAN('G',Gswitch)
                 else SWBOOLEAN('q',qswitch)
                 else SWBOOLEAN('M',Mswitch)
+                else SWBOOLEAN('m',mswitch)
                 else SWBOOLEAN('W',Wswitch)
                 else SWBOOLEAN('L',Lswitch)
+                else SWBOOLEAN('S',Sswitch)
                 else SWBOOLEAN('s',sswitch)
                 else SWBOOLEAN('y',yswitch)
                 else SWRANGE('p',":-",pswitch,pval1,pval2,"listg -p")
                 else SWINT('l',lswitch,linelength,"listg -l")
                 else SWINT('o',oswitch,labelorg,"listg -o")
-		else if (sw == 'Y')
-		{
-		    Yswitch = TRUE;
-		    yarg = arg;
-		    break;
-		}
+                else if (sw == 'Y')
+                {
+                    Yswitch = TRUE;
+                    yarg = arg;
+                    break;
+                }
                 else badargs = TRUE;
             }
         }
@@ -596,6 +640,8 @@ main(int argc, char *argv[])
         (Eswitch!=0) + (bswitch!=0) + (Gswitch!=0) + (yswitch!=0) +
         (Hswitch!=0) > 1)
         gt_abort(">E listg: -aAbMWeEHcdsGy are incompatible\n");
+
+    if (Sswitch) Lswitch = TRUE;
 
     if (Lswitch && !Mswitch && !Wswitch)
         gt_abort(">E listg: -L is only allowed with -M or -W\n");
@@ -621,10 +667,7 @@ main(int argc, char *argv[])
         outfile = stdout;
     }
     else if ((outfile = fopen(outfilename,"w")) == NULL)
-    {
-        fprintf(stderr,"Can't open output file %s\n",outfilename);
-        gt_abort(NULL);
-    }
+        gt_abort_1(">E Can't open output file %s\n",outfilename);
 
     nin = 0;
     if (!pswitch || pval2 == NOLIMIT)
@@ -638,7 +681,7 @@ main(int argc, char *argv[])
     while (nin < maxin || maxin == NOLIMIT)
     {
         if ((g = readgg_inc(infile,NULL,0,&m,&n,
-		  gprev,mprev,nprev,&digraph)) == NULL) break;
+                  gprev,mprev,nprev,&digraph)) == NULL) break;
         ++nin;
 
         if (Gswitch)
@@ -668,15 +711,19 @@ main(int argc, char *argv[])
         }
         else if (Mswitch)
         {
-	    if (Lswitch)
-                putLaplacianMagma(outfile,g,linelength,m,n,pval1+nin-1);
+            if (Lswitch)
+                putLaplacianMagma(outfile,g,linelength,Sswitch,m,n,pval1+nin-1);
             else
                 putMagma(outfile,g,linelength,digraph,m,n,pval1+nin-1);
-	}
+        }
+        else if (mswitch)
+        {
+            putMathematica(outfile,g,linelength,m,n,pval1+nin-1);
+        }
         else if (Wswitch)
         {
-	    if (Lswitch)
-                putLaplacianMaple(outfile,g,linelength,m,n,pval1+nin-1);
+            if (Lswitch)
+                putLaplacianMaple(outfile,g,linelength,Sswitch,m,n,pval1+nin-1);
             else
                 putMaple(outfile,g,linelength,m,n,pval1+nin-1);
         }
@@ -688,8 +735,8 @@ main(int argc, char *argv[])
             putGRAPE(outfile,g,m,n);
         else if (yswitch)
             putdotty(outfile,g,pval1+nin-1,(Yswitch?yarg:NULL),m,n);
-	else if (Hswitch)
-	    putHCP(outfile,g,m,n);
+        else if (Hswitch)
+            putHCP(outfile,g,m,n);
         else
         {
             if (qswitch)

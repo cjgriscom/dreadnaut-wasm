@@ -1,5 +1,8 @@
 /* gutils.h - procedure declarations for gutil1.c and gutil2.c */
 
+#ifndef  _GUTILS_H_    /* only process this file once */
+#define  _GUTILS_H_
+
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -27,6 +30,7 @@ extern boolean issubconnected(graph*,set*,int,int);
 extern long maxcliques(graph*,int,int);
 extern int maxcliquesize(graph*,int,int);
 extern int maxindsetsize(graph*,int,int);
+extern void sources_sinks(graph*,int,int,int*,int*);
 
 extern long digoncount(graph*,int,int);
 extern int loopcount(graph*,int,int);
@@ -46,12 +50,19 @@ extern long numind3sets(graph*,int,int);
 extern long numind3sets1(graph*,int);
 extern long numdirtriangles(graph*,int,int);
 extern long numdirtriangles1(graph*,int);
+extern long numsquares(graph*,int,int);
+extern long numdiamonds(graph*,int,int);
+extern long numpentagons(graph*,int,int);
 extern void delete1(graph*,graph*,int,int);
 extern int conncontent(graph*,int,int);
 extern boolean stronglyconnected(graph*,int,int);
+extern int ktreeness1(graph*,int);
+extern int ktreeness(graph*,int,int);
 
 /* extern int diameter_sg(sparsegraph*,int*,int*); */
 
 #ifdef __cplusplus
 }
+#endif
+
 #endif

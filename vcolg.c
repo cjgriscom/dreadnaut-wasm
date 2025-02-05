@@ -1,7 +1,7 @@
 /* vcolg.c version 3.1; B D McKay, Apr 24, 2021 */
 
 #define USAGE \
-"vcolg [-q] [-u|-T|-o] [-e#|-e#:#] [-m#] [-c#,..,#] [-f#] [infile [outfile]]"
+"vcolg [-q] [-u|-T|-o|-O] [-e#|-e#:#] [-m#] [-c#,..,#] [-f#] [infile [outfile]]"
 
 #define HELPTEXT \
 "  Read graphs or digraphs and colour their vertices in\n\
@@ -15,11 +15,12 @@
         The total must at least equal the number of vertices in the input.\n\
     -d#,..,#  minimum vertex degree for each colour (out-degree for digraphs)\n\
     -D#,..,#  maximum vertex degree for each colour (out-degree for digraphs)\n\
-	-d and -D can have fewer colours than -m/-c but not more\n\
+         -d and -D can have fewer colours than -m/-c but not more\n\
     -f# Use the group that fixes the first # vertices setwise\n\
     -T  Use a simple text output format (nv ne {col} {v1 v2})\n\
     -o  Use sparse6 (undirected) or digraph6 (directed) for output,\n\
           provided m=2 and the inputs have no loops.\n\
+    -O  Same as -o but use loops for weight 0, not weight 1\n\
     -u  no output, just count them\n\
     -q  suppress auxiliary information\n"
 
@@ -41,7 +42,7 @@ static int lastreject[MAXNV];
 static boolean lastrejok;
 static unsigned long groupsize;
 static unsigned long newgroupsize;
-static boolean Tswitch,oswitch;
+static boolean Tswitch,oswitch,Oswitch;
 
 static int fail_level;
 
@@ -78,18 +79,6 @@ extern void SUMMARY(void);
 
 /**************************************************************************/
 
-static void
-writeautom(int *p, int n)
-/* Called by allgroup. */
-{
-    int i;
-
-    for (i = 0; i < n; ++i) printf(" %2d",p[i]);
-    printf("\n");
-}
-
-/**************************************************************************/
-
 static int
 ismax(int *p, int n)
 /* test if col^p <= col */
@@ -100,8 +89,8 @@ ismax(int *p, int n)
     fail = 0;
     for (i = 0; i < n; ++i)
     {
-	k = p[i];
-	if (k > fail) fail = k;
+        k = p[i];
+        if (k > fail) fail = k;
         if (col[k] > col[i])
         {
             fail_level = fail;
@@ -144,16 +133,32 @@ writeone(FILE *outfile, graph *g, int *col, boolean digraph, int m, int n)
     int i;
     set *gi;
 
-    for (i = 0, gi = g; i < n; ++i, gi += m)
-        if (col[i] == 1) ADDELEMENT(gi,i);
+    if (Oswitch)
+    {
+        for (i = 0, gi = g; i < n; ++i, gi += m)
+            if (col[i] == 0) ADDELEMENT(gi,i);
+    }
+    else
+    {
+        for (i = 0, gi = g; i < n; ++i, gi += m)
+            if (col[i] == 1) ADDELEMENT(gi,i);
+    }
 
     if (digraph)
-	writed6(outfile,g,m,n);
+        writed6(outfile,g,m,n);
     else
         writes6(outfile,g,m,n);
 
-    for (i = 0, gi = g; i < n; ++i, gi += m)
-        if (col[i] == 1) DELELEMENT(gi,i);
+    if (Oswitch)
+    {
+        for (i = 0, gi = g; i < n; ++i, gi += m)
+            if (col[i] == 0) DELELEMENT(gi,i);
+    }
+    else
+    {
+        for (i = 0, gi = g; i < n; ++i, gi += m)
+            if (col[i] == 1) DELELEMENT(gi,i);
+    }
 }
 
 static int
@@ -197,39 +202,39 @@ trythisone(grouprec *group, graph *g, boolean digraph, int m, int n)
 
         ++vc_nout;
 
-	if (oswitch)
-	    writeone(outfile,g,col,digraph,m,n);
+        if (oswitch)
+            writeone(outfile,g,col,digraph,m,n);
         else if (outfile)
         {
 #ifdef OUTPROC
             OUTPROC(outfile,g,col,m,n);
 #else
-	    ne = 0;
-	    for (gi = g + m*(size_t)n; --gi >= g; )
-		ne += POPCOUNT(*gi);
-	    if (!digraph)
-	    {
-		for (i = 0, gi = g; i < n; ++i, gi += m)
-		    if (ISELEMENT(gi,i)) ++ne;
-	        ne /= 2;
-	    }
+            ne = 0;
+            for (gi = g + m*(size_t)n; --gi >= g; )
+                ne += POPCOUNT(*gi);
+            if (!digraph)
+            {
+                for (i = 0, gi = g; i < n; ++i, gi += m)
+                    if (ISELEMENT(gi,i)) ++ne;
+                ne /= 2;
+            }
 #define PUTINT(xx) { unsigned long ul = (xx); char *sp; \
  if (ul == 0) *(p++) = '0'; \
  else { sp = s; while (ul) { *(sp++) = (ul % 10) + '0'; ul /= 10; } \
         while (sp > s) { *(p++) = *(--sp); } }}
 #define SPC *(p++) = ' '
 
-	    DYNALLOC1(char,line,line_sz,20*(n+ne)+50,"vcolg output");
-	    p = line;
+            DYNALLOC1(char,line,line_sz,20*(n+ne)+50,"vcolg output");
+            p = line;
             PUTINT(n); SPC; PUTINT(ne);
             for (i = 0; i < n; ++i) { SPC; PUTINT(col[i]); }
             SPC;
             for (i = 0, gi = g; i < n; ++i, gi += m)
             {
                 for (j = (digraph?-1:i-1); (j = nextelement(gi,m,j)) >= 0; )
-		{
-		    SPC; PUTINT(i); SPC; PUTINT(j);
-		}
+                {
+                    SPC; PUTINT(i); SPC; PUTINT(j);
+                }
             }
             *(p++) = '\n';
             *(p++) = '\0';
@@ -247,7 +252,7 @@ trythisone(grouprec *group, graph *g, boolean digraph, int m, int n)
 static int
 scan(int level, graph *g, boolean digraph, int *prev, long mincols,
      long maxcols, long sofar, long *colcount, long *mindeg,
-     long *maxdeg, long *deg, long numcols, grouprec *group, int m, int n)
+     long *maxdeg, long *deg, int numcols, grouprec *group, int m, int n)
 /* Recursive scan for default case */
 /* Returned value is level to return to. */
 {
@@ -263,18 +268,18 @@ scan(int level, graph *g, boolean digraph, int *prev, long mincols,
     max = maxcols - sofar;
     if (max >= numcols) max = numcols - 1;
     if (prev[level] >= 0 && col[prev[level]] < max)
-	max = col[prev[level]];
+        max = col[prev[level]];
 
     for (k = min; k <= max; ++k)
     {
-	if (colcount[k] <= 0) continue;
-	if (mindeg[k] > deg[level] || maxdeg[k] < deg[level]) continue;
-	--colcount[k];
+        if (colcount[k] <= 0) continue;
+        if (mindeg[k] > deg[level] || maxdeg[k] < deg[level]) continue;
+        --colcount[k];
         col[level] = k;
         ret = scan(level+1,g,digraph,prev,mincols,maxcols,
                        sofar+k,colcount,mindeg,maxdeg,deg,numcols,group,m,n);
-	++colcount[k];
-	if (ret < level) return ret;
+        ++colcount[k];
+        if (ret < level) return ret;
     }
 
     return level-1;
@@ -285,7 +290,7 @@ scan(int level, graph *g, boolean digraph, int *prev, long mincols,
 static void
 colourgraph(graph *g, int nfixed, long mincols, long maxcols,
          long *colcount, long *mindeg, long *maxdeg, long *deg,
-         long numcols, int m, int n)
+         int numcols, int m, int n)
 {
     static DEFAULTOPTIONS_GRAPH(options);
     statsblk stats;
@@ -305,63 +310,63 @@ colourgraph(graph *g, int nfixed, long mincols, long maxcols,
     nloops = 0;
     for (i = 0, gi = g; i < n; ++i, gi += m)
         if (ISELEMENT(gi,i))
-	{
-	    DELELEMENT(gi,i);
-	    loop[i] = TRUE;
-	    ++nloops;
-	}
-	else
-	    loop[i] = FALSE;
+        {
+            DELELEMENT(gi,i);
+            loop[i] = TRUE;
+            ++nloops;
+        }
+        else
+            loop[i] = FALSE;
 
     for (region = 0; region < 2; ++region)
     {
-	if (region == 0)
-	{
-	    if (nfixed == 0) continue;
-	    start = 0;
-	    stop = nfixed;
-	    if (stop > n) stop = n;
-	}
-	else
-	{
-	    if (nfixed >= n) continue;
-	    start = nfixed;
-	    stop = n;
-	}
-	
-	for (i = start, gi = g + m*(size_t)start; i < stop; ++i, gi += m)
-	{
+        if (region == 0)
+        {
+            if (nfixed == 0) continue;
+            start = 0;
+            stop = nfixed;
+            if (stop > n) stop = n;
+        }
+        else
+        {
+            if (nfixed >= n) continue;
+            start = nfixed;
+            stop = n;
+        }
+        
+        for (i = start, gi = g + m*(size_t)start; i < stop; ++i, gi += m)
+        {
             /* Find most recent equivalent j. */
-	    for (j = i-1, gj = gi-m; j >= start; --j, gj -= m)
-	    {
-		if (loop[j] != loop[i]) continue;
-		for (k = 0; k < m; ++k) if (gi[k] != gj[k]) break;
-		if (k < m)
-		{
-		    FLIPELEMENT(gi,i); FLIPELEMENT(gj,j);
-		    for (k = 0; k < m; ++k) if (gi[k] != gj[k]) break;
-		    FLIPELEMENT(gi,i); FLIPELEMENT(gj,j);
-		}
-		if (k == m) break;
-	    }
-	    if (j >= start)
-	    {
-		prev[i] = j;
-		weight[i] = weight[j] + 1;
-	    }
-	    else
-	    {
-		prev[i] = -1;
-		weight[i] = 0;
-	    }
-	}
+            for (j = i-1, gj = gi-m; j >= start; --j, gj -= m)
+            {
+                if (loop[j] != loop[i]) continue;
+                for (k = 0; k < m; ++k) if (gi[k] != gj[k]) break;
+                if (k < m)
+                {
+                    FLIPELEMENT(gi,i); FLIPELEMENT(gj,j);
+                    for (k = 0; k < m; ++k) if (gi[k] != gj[k]) break;
+                    FLIPELEMENT(gi,i); FLIPELEMENT(gj,j);
+                }
+                if (k == m) break;
+            }
+            if (j >= start)
+            {
+                prev[i] = j;
+                weight[i] = weight[j] + 1;
+            }
+            else
+            {
+                prev[i] = -1;
+                weight[i] = 0;
+            }
+        }
     }
 
     if (n == 0)
     {
         scan(0,g,FALSE,prev,mincols,maxcols,0,colcount,
                                NULL,NULL,NULL,numcols,FALSE,m,n);
-	return;
+        return;
     }
 
     for (i = nfixed; i < n; ++i) weight[i] += nfixed;
@@ -378,7 +383,7 @@ colourgraph(graph *g, int nfixed, long mincols, long maxcols,
 
     if (nloops > 0)
         for (i = 0, gi = g; i < n; ++i, gi += m)
-	    if (loop[i]) ADDELEMENT(gi,i);
+            if (loop[i]) ADDELEMENT(gi,i);
  
     nauty(g,lab,ptn,NULL,orbits,&options,&stats,workspace,8*MAXNV,m,n,NULL);
 
@@ -392,12 +397,12 @@ colourgraph(graph *g, int nfixed, long mincols, long maxcols,
 
     if (stats.numorbits < n)
     {
-	j = n;
-	for (i = 0; i < n; ++i)
-	    if (orbits[i] < i && orbits[i] < j) j = orbits[i];
+        j = n;
+        for (i = 0; i < n; ++i)
+            if (orbits[i] < i && orbits[i] < j) j = orbits[i];
 
-	for (i = j + 1; i < n; ++i)
-	    if (orbits[i] == j) prev[i] = j;
+        for (i = j + 1; i < n; ++i)
+            if (orbits[i] == j) prev[i] = j;
     }
 
     lastrejok = FALSE;
@@ -412,7 +417,7 @@ colourgraph(graph *g, int nfixed, long mincols, long maxcols,
 static void
 colourdigraph(graph *g, int nfixed, long mincols, long maxcols,
          long *colcount, long *mindeg, long *maxdeg, long *deg,
-         long numcols, int m, int n)
+         int numcols, int m, int n)
 {
     static DEFAULTOPTIONS_GRAPH(options);
     statsblk stats;
@@ -436,73 +441,74 @@ colourdigraph(graph *g, int nfixed, long mincols, long maxcols,
     nloops = 0;
     for (i = 0, gi = g; i < n; ++i, gi += m)
         if (ISELEMENT(gi,i))
-	{
-	    DELELEMENT(gi,i);
-	    loop[i] = TRUE;
-	    ++nloops;
-	}
-	else
-	    loop[i] = FALSE;
+        {
+            DELELEMENT(gi,i);
+            loop[i] = TRUE;
+            ++nloops;
+        }
+        else
+            loop[i] = FALSE;
 
     for (ii = 0; ii < m*(size_t)n; ++ii) gconv[ii] = g[ii];
     converse(gconv,m,n);
 
     for (region = 0; region < 2; ++region)
     {
-	if (region == 0)
-	{
-	    if (nfixed == 0) continue;
-	    start = 0;
-	    stop = nfixed;
-	    if (stop > n) stop = n;
-	}
-	else
-	{
-	    if (nfixed >= n) continue;
-	    start = nfixed;
-	    stop = n;
-	}
-	
-	for (i = start,
+        if (region == 0)
+        {
+            if (nfixed == 0) continue;
+            start = 0;
+            stop = nfixed;
+            if (stop > n) stop = n;
+        }
+        else
+        {
+            if (nfixed >= n) continue;
+            start = nfixed;
+            stop = n;
+        }
+        
+        for (i = start,
                     gi = g + m*(size_t)start, gci = gconv + m*(size_t)start;
              i < stop; ++i, gi += m, gci += m)
-	{
+        {
             /* Find most recent equivalent j. */
-	    for (j = i-1, gj = gi-m, gcj = gci-m; j >= start;
+            for (j = i-1, gj = gi-m, gcj = gci-m; j >= start;
                                                    --j, gj -= m, gcj -= m)
-	    {
-		if (loop[j] != loop[i]
+            {
+                if (loop[j] != loop[i]
                        || ISELEMENT(gi,j) != ISELEMENT(gj,i)) continue;
-		for (k = 0; k < m; ++k)
+                for (k = 0; k < m; ++k)
                      if (gi[k] != gj[k] || gci[k] != gcj[k]) break;
-		if (k < m)
-		{
-		    FLIPELEMENT(gi,i); FLIPELEMENT(gj,j);
-		    FLIPELEMENT(gci,i); FLIPELEMENT(gcj,j);
-		    for (k = 0; k < m; ++k)
+                if (k < m)
+                {
+                    FLIPELEMENT(gi,i); FLIPELEMENT(gj,j);
+                    FLIPELEMENT(gci,i); FLIPELEMENT(gcj,j);
+                    for (k = 0; k < m; ++k)
                         if (gi[k] != gj[k] || gci[k] != gcj[k]) break;
-		    FLIPELEMENT(gci,i); FLIPELEMENT(gcj,j);
-		    FLIPELEMENT(gi,i); FLIPELEMENT(gj,j);
-		}
-		if (k == m) break;
-	    }
-	    if (j >= start)
-	    {
-		prev[i] = j;
-		weight[i] = weight[j] + 1;
-	    }
-	    else
-	    {
-		prev[i] = -1;
-		weight[i] = 0;
-	    }
-	}
+                    FLIPELEMENT(gci,i); FLIPELEMENT(gcj,j);
+                    FLIPELEMENT(gi,i); FLIPELEMENT(gj,j);
+                }
+                if (k == m) break;
+            }
+            if (j >= start)
+            {
+                prev[i] = j;
+                weight[i] = weight[j] + 1;
+            }
+            else
+            {
+                prev[i] = -1;
+                weight[i] = 0;
+            }
+        }
     }
 
     for (i = nfixed; i < n; ++i) weight[i] += nfixed;
 
-    if (maxcols == NOLIMIT || maxcols > n*numcols) maxcols = n*numcols;
-    if (n*numcols < mincols) return;
+    if (maxcols == NOLIMIT || maxcols > n*(long)numcols)
+        maxcols = n*(long)numcols;
+    if (n*(long)numcols < mincols) return;
 
     if (n == 0)
     {
@@ -522,7 +528,7 @@ colourdigraph(graph *g, int nfixed, long mincols, long maxcols,
 
     if (nloops > 0)
         for (i = 0, gi = g; i < n; ++i, gi += m)
-	    if (loop[i]) ADDELEMENT(gi,i);
+            if (loop[i]) ADDELEMENT(gi,i);
  
     nauty(g,lab,ptn,NULL,orbits,&options,&stats,workspace,8*MAXNV,m,n,NULL);
 
@@ -536,12 +542,12 @@ colourdigraph(graph *g, int nfixed, long mincols, long maxcols,
 
     if (stats.numorbits < n)
     {
-	j = n;
-	for (i = 0; i < n; ++i)
-	    if (orbits[i] < i && orbits[i] < j) j = orbits[i];
+        j = n;
+        for (i = 0; i < n; ++i)
+            if (orbits[i] < i && orbits[i] < j) j = orbits[i];
 
-	for (i = j + 1; i < n; ++i)
-	    if (orbits[i] == j) prev[i] = j;
+        for (i = j + 1; i < n; ++i)
+            if (orbits[i] == j) prev[i] = j;
     }
 
     lastrejok = FALSE;
@@ -562,7 +568,8 @@ main(int argc, char *argv[])
     char *arg,sw;
     boolean badargs,digraph,cswitch,dswitch,Dswitch;
     boolean fswitch,uswitch,eswitch,qswitch,mswitch;
-    long mincols,maxcols,numcols,totcols;
+    long mincols,maxcols,totcols;
+    int numcols;
     double t;
     char *infilename,*outfilename;
     FILE *infile;
@@ -574,7 +581,7 @@ main(int argc, char *argv[])
 
     nauty_check(WORDSIZE,1,1,NAUTYVERSIONID);
 
-    fswitch = Tswitch = oswitch = cswitch = dswitch = FALSE;
+    fswitch = Tswitch = oswitch = Oswitch = cswitch = dswitch = FALSE;
     uswitch = eswitch = mswitch = qswitch = Dswitch = FALSE;
     infilename = outfilename = NULL;
 
@@ -589,14 +596,15 @@ main(int argc, char *argv[])
             while (*arg != '\0')
             {
                 sw = *arg++;
-                     SWLONG('m',mswitch,numcols,"vcolg -m")
+                     SWINT('m',mswitch,numcols,"vcolg -m")
                 else SWBOOLEAN('q',qswitch)
                 else SWBOOLEAN('u',uswitch)
                 else SWBOOLEAN('T',Tswitch)
                 else SWBOOLEAN('o',oswitch)
-		else SWSEQUENCEMIN('c',",",cswitch,colcount,1,MAXNV,collen,"vcolg -c")
-		else SWSEQUENCEMIN('d',",",dswitch,mindeg,1,MAXNV,dlen,"vcolg -d")
-		else SWSEQUENCEMIN('D',",",Dswitch,maxdeg,1,MAXNV,Dlen,"vcolg -D")
+                else SWBOOLEAN('O',Oswitch)
+                else SWSEQUENCEMIN('c',",",cswitch,colcount,1,MAXNV,collen,"vcolg -c")
+                else SWSEQUENCEMIN('d',",",dswitch,mindeg,1,MAXNV,dlen,"vcolg -d")
+                else SWSEQUENCEMIN('D',",",Dswitch,maxdeg,1,MAXNV,Dlen,"vcolg -D")
                 else SWINT('f',fswitch,nfixed,"vcolg -f")
                 else SWRANGE('e',":-",eswitch,mincols,maxcols,"vcolg -e")
                 else badargs = TRUE;
@@ -618,18 +626,20 @@ main(int argc, char *argv[])
         exit(1);
     }
 
-    if ((Tswitch!=0) + (oswitch!=0) + (uswitch!=0) >= 2)
-        gt_abort(">E vcolg: -T, -o and -u are incompatible\n");
+    if ((Tswitch!=0) + (Oswitch!=0) + (oswitch!=0) + (uswitch!=0) >= 2)
+        gt_abort(">E vcolg: -T, -o, -O and -u are incompatible\n");
 
 #ifndef OUTPROC
-    if (!Tswitch && !oswitch && !uswitch)
-        gt_abort(">E vcolg: must use -T, -o or -u\n");
+    if (!Tswitch && !oswitch && !Oswitch && !uswitch)
+        gt_abort(">E vcolg: must use -T, -o, -O or -u\n");
 #endif
 
     if (!mswitch) numcols = 2;
 
+    if (Oswitch) oswitch = TRUE;
+
     if (oswitch && numcols != 2)
-        gt_abort(">E vcolg: -o is only allowed for 2 colours\n");
+        gt_abort(">E vcolg: -o and -O are only allowed for 2 colours\n");
 
     if (!eswitch)
     {
@@ -639,41 +649,41 @@ main(int argc, char *argv[])
     if (!fswitch) nfixed = 0;
 
     if (cswitch && mswitch && numcols != collen)
-	gt_abort(">E vcolg: -m and -c disagree on number of colours\n");
+        gt_abort(">E vcolg: -m and -c disagree on number of colours\n");
 
     if (cswitch)
     {
-	numcols = collen;
-	totcols = 0;
-	for (i = 0; i < numcols; ++i)
-	    if (colcount[i] < 0)
-		gt_abort(">E vcolg: negative counts not allowed for -c\n");
-	    else
-	    {
-		totcols += colcount[i];
-		if (totcols < 0) { totcols = NOLIMIT; break; } /* catch overflow */
-	    }
+        numcols = collen;
+        totcols = 0;
+        for (i = 0; i < numcols; ++i)
+            if (colcount[i] < 0)
+                gt_abort(">E vcolg: negative counts not allowed for -c\n");
+            else
+            {
+                totcols += colcount[i];
+                if (totcols < 0) { totcols = NOLIMIT; break; } /* catch overflow */
+            }
     }
     else
-	for (i = 0; i < numcols; ++i) colcount[i] = NOLIMIT;
+        for (i = 0; i < numcols; ++i) colcount[i] = NOLIMIT;
 
     if (dswitch && dlen > numcols)
         gt_abort(">E vcolg: -d has too many colours\n");
     if (Dswitch && Dlen > numcols)
-	gt_abort(">E vcolg: -D has too many colours\n");
+        gt_abort(">E vcolg: -D has too many colours\n");
 
     for (i = (dswitch ? dlen : 0); i < numcols; ++i)
-	mindeg[i] = 0;
+        mindeg[i] = 0;
     for (i = (Dswitch ? Dlen : 0); i < numcols; ++i)
-	maxdeg[i] = NOLIMIT;
+        maxdeg[i] = NOLIMIT;
     for (i = 0; i < numcols; ++i)
-	if (mindeg[i] > maxdeg[i])
-	    gt_abort(">E vcolg : contradictory bound from -d/-D\n");
+        if (mindeg[i] > maxdeg[i])
+            gt_abort(">E vcolg : contradictory bound from -d/-D\n");
 
     if (cswitch && !qswitch)
     { 
         fprintf(stderr,">c"); for (i = 0; i < numcols; ++i)
-	    fprintf(stderr," %ld",colcount[i]);
+            fprintf(stderr," %ld",colcount[i]);
         fprintf(stderr,"\n");
     }
 
@@ -681,7 +691,7 @@ main(int argc, char *argv[])
     { 
         fprintf(stderr,">d");
         for (i = 0; i < numcols; ++i)
-	    fprintf(stderr," %ld",mindeg[i]);
+            fprintf(stderr," %ld",mindeg[i]);
         fprintf(stderr,"\n");
     }
 
@@ -690,8 +700,8 @@ main(int argc, char *argv[])
         fprintf(stderr,">D");
        
         for (i = 0; i < numcols; ++i)
-	    if (maxdeg[i] == NOLIMIT) fprintf(stderr," -");
-	    else                      fprintf(stderr," %ld",maxdeg[i]);
+            if (maxdeg[i] == NOLIMIT) fprintf(stderr," -");
+            else                      fprintf(stderr," %ld",maxdeg[i]);
         fprintf(stderr,"\n");
     }
 
@@ -702,7 +712,7 @@ main(int argc, char *argv[])
         if (eswitch || mswitch || uswitch || (fswitch && nfixed > 0)
               || Tswitch || oswitch)
             CATMSG0(" -");
-        if (mswitch) CATMSG1("m%ld",numcols);
+        if (mswitch) CATMSG1("m%d",numcols);
         if (uswitch) CATMSG0("u");
         if (Tswitch) CATMSG0("T");
         if (oswitch) CATMSG0("o");
@@ -743,10 +753,7 @@ main(int argc, char *argv[])
             outfile = stdout;
         }
         else if ((outfile = fopen(outfilename,"w")) == NULL)
-        {
-            fprintf(stderr,"Can't open output file %s\n",outfilename);
-            gt_abort(NULL);
-        }
+            gt_abort_1(">E Can't open output file %s\n",outfilename);
     }
 
     vc_nin = vc_nout = 0;
@@ -757,26 +764,26 @@ main(int argc, char *argv[])
         if ((g = readgg(infile,NULL,0,&m,&n,&digraph)) == NULL) break;
         ++vc_nin;
 
-	if (cswitch && n > totcols)
-	    gt_abort(">E vcolg: not enough colours for input\n");
+        if (cswitch && n > totcols)
+            gt_abort(">E vcolg: not enough colours for input\n");
 
         if (oswitch && loopcount(g,m,n) > 0)
             gt_abort(">E vcolg: loops in input are not allowed for -o\n");
 
-	for (i = 0, gi = g; i < n; ++i, gi += m)
-	{
-	    deg[i] = 0;
-	    for (j = 0; j < m; ++j) deg[i] += POPCOUNT(gi[j]);
-	}
+        for (i = 0, gi = g; i < n; ++i, gi += m)
+        {
+            deg[i] = 0;
+            for (j = 0; j < m; ++j) deg[i] += POPCOUNT(gi[j]);
+        }
 
-	if (!digraph)
+        if (!digraph)
             colourgraph(g,nfixed,mincols,maxcols,colcount,
                                    mindeg,maxdeg,deg,numcols,m,n);
-	else
-	    colourdigraph(g,nfixed,mincols,maxcols,colcount,
+        else
+            colourdigraph(g,nfixed,mincols,maxcols,colcount,
                                    mindeg,maxdeg,deg,numcols,m,n);
 
-	if (!uswitch && ferror(outfile)) gt_abort(">E vcolg output error\n");
+        if (!uswitch && ferror(outfile)) gt_abort(">E vcolg output error\n");
         FREES(g);
     }
     t = CPUTIME - t;
