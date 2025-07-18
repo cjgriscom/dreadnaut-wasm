@@ -2,8 +2,8 @@
 *                                                                            *
 * This is the header file for version 2.5 of nautaux.c.                      *
 *                                                                            *
-*   Copyright (1984-2013) Brendan McKay.  All rights reserved.               *
-*   Subject to the waivers and disclaimers in nauty.h.                       *
+*   Copyright (1984-) Brendan McKay.                                         *
+*   Subject to the conditions and disclaimers in the file COPYRIGHT.         *
 *                                                                            *
 *   CHANGE HISTORY                                                           *
 *       26-Apr-89 : initial creation for version 1.5.                        *
@@ -24,11 +24,11 @@
 extern "C" {
 #endif
 
-extern int component(graph*,int,set*,int,int);
-extern boolean equitable(graph*,int*,int*,int,int,int);
-extern long ptncode(graph*,int*,int*,int,int,int);
-extern void nautaux_freedyn(void);
-extern void nautaux_check(int,int,int,int);
+int component(graph*,int,set*,int,int);
+boolean equitable(graph*,int*,int*,int,int,int);
+long ptncode(graph*,int*,int*,int,int,int);
+void nautaux_freedyn(void);
+void nautaux_check(int,int,int,int);
 #ifdef __cplusplus
 }
 #endif

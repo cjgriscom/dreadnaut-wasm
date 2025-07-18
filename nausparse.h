@@ -1,12 +1,12 @@
-/* nausparse.h : header file for sparse digraphs, nauty 2.8 */
+/* nausparse.h : header file for sparse digraphs, nauty 2.9 */
 /* This version allows only simple graphs with loops but
  * contains the data structures for weights on the edges
  * even though they aren't implemented yet. */
 
 /*****************************************************************************
 *                                                                            *
-*   Copyright (1984-2022) Brendan McKay.  All rights reserved.               *
-*   Subject to the waivers and disclaimers in nauty.h.                       *
+*   Copyright (1984-) Brendan McKay.                                         *
+*   Subject to the conditions and disclaimers in the file COPYRIGHT.         *
 *                                                                            *
 *   CHANGE HISTORY                                                           *
 *       10-Nov-09 : removed types shortish and permutation                   *
@@ -96,39 +96,35 @@ extern "C" {
 
 extern dispatchvec dispatch_sparse;
 
-extern int targetcell_sg(graph*,int*,int*,int,int,boolean,int,int,int);
-extern boolean cheapautom_sg(int*,int,boolean,int);
-extern boolean isautom_sg(graph*,int*,boolean,int,int);
-extern void refine_sg(graph*,int*,int*,int,int*,int*,set*,int*,int,int);
-extern int testcanlab_sg(graph*,graph*,int*,int*,int,int);
-extern void updatecan_sg(graph*,graph*,int*,int,int,int);
-extern int testcanlab_tr(sparsegraph*,sparsegraph*,int*,int*,int*);
-extern int comparelab_tr(sparsegraph*,int*,int*,int*,int*,int*,int*);
-extern void updatecan_tr(sparsegraph*,sparsegraph*,int*,int*,int);
-extern void init_sg(graph*,graph**,graph*,graph**,int*,int*,set*,
+int targetcell_sg(graph*,int*,int*,int,int,boolean,int,int,int);
+boolean cheapautom_sg(int*,int,boolean,int);
+boolean isautom_sg(graph*,int*,boolean,int,int);
+void refine_sg(graph*,int*,int*,int,int*,int*,set*,int*,int,int);
+int testcanlab_sg(graph*,graph*,int*,int*,int,int);
+void updatecan_sg(graph*,graph*,int*,int,int,int);
+int testcanlab_tr(sparsegraph*,sparsegraph*,int*,int*,int*);
+int comparelab_tr(sparsegraph*,int*,int*,int*,int*,int*,int*);
+void updatecan_tr(sparsegraph*,sparsegraph*,int*,int*,int);
+void init_sg(graph*,graph**,graph*,graph**,int*,int*,set*,
 	                   struct optionstruct*,int*,int,int);
-extern void cleanup_sg(graph*,graph**,graph*,graph**,int*,
+void cleanup_sg(graph*,graph**,graph*,graph**,int*,
            int*,optionblk*,statsblk*stats,int,int);
-extern void nausparse_freedyn(void);
-extern void nausparse_check(int,int,int,int);
+void nausparse_freedyn(void);
+void nausparse_check(int,int,int,int);
 
-extern sparsegraph *nauty_to_sg(graph*,sparsegraph*,int,int);
-extern graph* sg_to_nauty(sparsegraph*,graph*,int,int*);
-extern void sortlists_sg(sparsegraph*);
-extern boolean aresame_sg(sparsegraph*,sparsegraph*);
-extern void put_sg(FILE*,sparsegraph*,boolean,int);
-extern sparsegraph *copy_sg(sparsegraph*,sparsegraph*);
-extern void distvals(sparsegraph*,int,int*,int);
+sparsegraph* nauty_to_sg(graph*,sparsegraph*,int,int);
+graph* sg_to_nauty(sparsegraph*,graph*,int,int*);
+void sortlists_sg(sparsegraph*);
+boolean aresame_sg(sparsegraph*,sparsegraph*);
+void put_sg(FILE*,sparsegraph*,boolean,int);
+sparsegraph *copy_sg(sparsegraph*,sparsegraph*);
+void distvals(sparsegraph*,int,int*,int);
 
-extern void sparsenauty(sparsegraph*g,int*,int*,int*,
+void sparsenauty(sparsegraph*g,int*,int*,int*,
                         optionblk*,statsblk*,sparsegraph*);
 
-extern void
-   adjacencies_sg(graph*,int*,int*,int,int,int,int*,int,boolean,int,int);
-extern void
-   distances_sg(graph*,int*,int*,int,int,int,int*,int,boolean,int,int);
-extern void
-   distances_sg(graph*,int*,int*,int,int,int,int*,int,boolean,int,int);
+void adjacencies_sg(graph*,int*,int*,int,int,int,int*,int,boolean,int,int);
+void distances_sg(graph*,int*,int*,int,int,int,int*,int,boolean,int,int);
 
 #ifdef __cplusplus
 }

@@ -1,12 +1,12 @@
 /* This is a demonstration plugin for geng.  Its function is to remove
-graphs containing an induced cycle of length 4.
+   graphs containing an induced cycle of length 4.
 A typical compilation command would be
    gcc -o no4holes -DMAXN=WORDSIZE -O3 -march=native -DPRUNE=no4holes \
         geng.c no4holes.c nauty1.a
 
 PREPRUNE could be used in place of PRUNE -- adopt whichever is fastest.
 The resulting executable will have all the features of geng but also graphs
-without induced cycles of length 4 will be excluded. */
+with induced cycles of length 4 will be excluded. */
 
 #include "gtools.h"
 

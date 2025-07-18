@@ -1,6 +1,6 @@
-/* xsubdivideg.c  version 1.1; B D McKay, Oct 2017. */
+/* subdivideg.c  version 1.2; B D McKay, Jan 2025. */
 
-#define USAGE "xsubdivideg [-k#] [-i] [-q] [infile [outfile]]"
+#define USAGE "subdivideg [-k#] [-i] [-q] [infile [outfile]]"
 
 #define HELPTEXT \
 " Make the subdivision graphs of a file of graphs, or the inverse operation.\n\
@@ -125,7 +125,7 @@ smoothgraph(sparsegraph *g)
 {
     int *e,*d,i,j,n,newn;
     int j1,j2;
-    size_t *v,hhi,hi,llo,lo,mid;
+    size_t *v,hhi,hi,llo,lo,mid=0;
     DYNALLSTAT(int,newlab,newlab_sz);
 
     sortlists_sg(g);
@@ -414,7 +414,7 @@ main(int argc, char *argv[])
             {
                 sw = *arg++;
                 SWBOOLEAN('q',quiet)
-                SWBOOLEAN('i',inverse)
+                else SWBOOLEAN('i',inverse)
                 else SWINT('k',kswitch,kvalue,"subdivideg -k")
                 else badargs = TRUE;
             }

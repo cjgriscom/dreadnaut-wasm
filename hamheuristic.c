@@ -1,5 +1,5 @@
 /* hamheuristic.c
-   Version 1.2  Jan 2024.  Brendan McKay
+   Version 1.3  Jan 2025.  Brendan McKay
 */
 
 #define USAGE "hamheuristic [-sgu] [-vq] [-V] [-L#] [-t#] [infile [outfile]]"
@@ -20,7 +20,8 @@
 \n\
     -p  Be content with a hamiltonian path\n\
     -v  Give a cycle or path if one is found.\n\
-    -L# Limit number of sideways steps (default 1000+5*n)\n\
+    -c  If a cycle or path is found, perform an independent check of it.\n\
+    -L# Limit number of sideways steps (default 1000+40*n)\n\
     -t# Try # times (default 1)\n\
 \n\
     -q  suppress auxiliary information\n"
@@ -37,6 +38,48 @@
 
 /**************************************************************************/
 
+static void
+checkcycle(sparsegraph *sg, boolean pathok, int *cyc)
+/* Abort if cyc[] is not a cycle (or a path if psthok) */
+{
+    int i,m,n;
+    size_t *v;
+    int *e,*d,*elim,*ee;
+    DYNALLSTAT(set,vert,vert_sz);
+
+    SG_VDE(sg,v,d,e);
+    n = sg->nv;
+    m = SETWORDSNEEDED(n);
+
+    DYNALLOC1(set,vert,vert_sz,m,"malloc");
+    EMPTYSET(vert,m);
+
+    for (i = 0; i < n; ++i)
+    {
+        if (cyc[i] < 0 || cyc[i] > n || ISELEMENT(vert,cyc[i]))
+            gt_abort(">E Cycle error : not bijection\n");
+        ADDELEMENT(vert,cyc[i]);
+    }
+
+    for (i = 0; i < n-1; ++i)
+    {
+        elim = e + (v[cyc[i]]+d[cyc[i]]);
+        for (ee = e + v[cyc[i]]; ee < elim; ++ee)
+            if (*ee == cyc[i+1]) break;
+        if (ee == elim)
+            gt_abort(">E Cycle error : not connected\n");
+    }
+
+    if (pathok) return;
+    elim = e + (v[cyc[n-1]]+d[cyc[n-1]]);
+    for (ee = e + v[cyc[n-1]]; ee < elim; ++ee)
+        if (*ee == cyc[0]) break;
+    if (ee == elim)
+        gt_abort(">E Cycle error : not connected\n");
+}
+
+/**************************************************************************/
+
 static int
 hamheur(sparsegraph *sg, boolean pathok, unsigned long limit, int *cyc)
 /* Try up to limit, fill cyc if YES and cyc!=NULL */
@@ -48,10 +91,10 @@ hamheur(sparsegraph *sg, boolean pathok, unsigned long limit, int *cyc)
     int end0,end1,v0,v1;
     size_t *v;
     int n,*e,*d,len,d0,*e0,d1,*e1,dx,*ex;
-    int i,ix,x,j,w,vext,exts,numleaves;
+    int i,ix,x,j,w,vext=0,exts,numleaves;
     unsigned long count;
-    boolean left,cycle;
-    long ran;
+    boolean left=FALSE,cycle;
+    unsigned long long ran;
  
     SG_VDE(sg,v,d,e);
     n = sg->nv;
@@ -260,11 +303,11 @@ main(int argc, char *argv[])
 {
     sparsegraph sg;
     int n,codetype;
-    int argnum,i,j,outcode,tvalue;
+    int argnum,i,j,outcode=0,tvalue;
     char *arg,sw;
     boolean badargs;
     boolean pswitch,sswitch,gswitch,qswitch,Lswitch;
-    boolean Vswitch,tswitch,vswitch,uswitch;
+    boolean Vswitch,tswitch,vswitch,uswitch,docheck;
     long Lvalue;
     double t;
     char *infilename,*outfilename;
@@ -278,7 +321,7 @@ main(int argc, char *argv[])
     INITRANBYTIME;
 
     uswitch = sswitch = gswitch = Lswitch = qswitch = FALSE;
-    pswitch = vswitch = tswitch = Vswitch = FALSE;
+    pswitch = vswitch = tswitch = Vswitch = docheck = FALSE;
     infilename = outfilename = NULL;
 
     argnum = 0;
@@ -299,6 +342,7 @@ main(int argc, char *argv[])
                 else SWBOOLEAN('q',qswitch)
                 else SWBOOLEAN('v',vswitch)
                 else SWBOOLEAN('V',Vswitch)
+                else SWBOOLEAN('c',docheck)
                 else SWLONG('L',Lswitch,Lvalue,"-L")
                 else SWINT('t',tswitch,tvalue,"-t")
                 else badargs = TRUE;
@@ -329,13 +373,14 @@ main(int argc, char *argv[])
     {
         fprintf(stderr,">A hamheuristic");
         if (pswitch || sswitch || gswitch || vswitch || Vswitch
-                    || uswitch || tswitch || Lswitch)
+                    || uswitch || tswitch || Lswitch || docheck)
             fprintf(stderr," -");
         if (sswitch) fprintf(stderr,"s");
         if (gswitch) fprintf(stderr,"g");
         if (uswitch) fprintf(stderr,"u");
         if (vswitch) fprintf(stderr,"v");
         if (Vswitch) fprintf(stderr,"V");
+        if (docheck) fprintf(stderr,"c");
         if (pswitch) fprintf(stderr,"p");
         if (Lswitch) fprintf(stderr,"L%ld",Lvalue);
         if (tswitch) fprintf(stderr,"t%d",tvalue);
@@ -352,6 +397,7 @@ main(int argc, char *argv[])
 
     NODIGRAPHSYET(codetype);
 
+    outfile = NULL;
     if (!uswitch)
     {
         if (!outfilename || outfilename[0] == '-')
@@ -385,13 +431,13 @@ main(int argc, char *argv[])
 
         n = sg.nv;
 
-        if (vswitch) { DYNALLOC1(int,cyc,cyc_sz,n,"malloc"); }
-        else         cyc = NULL;
+        if (vswitch || docheck) { DYNALLOC1(int,cyc,cyc_sz,n,"malloc"); }
+        else       cyc = NULL;
 
         status = TIMEOUT;
         for (i = 0; i < tvalue; ++i)
         {
-            status = hamheur(&sg,pswitch,(Lswitch?Lvalue:1000+5*n),cyc);
+            status = hamheur(&sg,pswitch,(Lswitch?Lvalue:1000+40L*n),cyc);
             if (status != TIMEOUT) break;
         }
 
@@ -420,6 +466,8 @@ main(int argc, char *argv[])
                 fprintf(stderr,"\n");
             }
         }
+
+        if (docheck && status == YES) checkcycle(&sg,pswitch,cyc);
     }
     t = CPUTIME - t;
 

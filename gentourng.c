@@ -1,4 +1,4 @@
-/* gentourng.c  version 1.4; B D McKay, Jan 20, 2016 */
+/* gentourng.c  version 1.5; B D McKay, Jan 22, 2025 */
 
 #define USAGE \
 "gentourng [-cd#D#] [-ugsz] [-lq] n [res/mod] [file]"
@@ -166,7 +166,6 @@ Counts:
 **************************************************************************
 
     Author:   B. D. McKay, Nov 2008.
-              Copyright  B. McKay (2008-2022).  All rights reserved.
               This software is subject to the conditions and waivers
               detailed in the file COPYRIGHT.
 
@@ -272,16 +271,16 @@ static TLS_ATTR unsigned long a2calls,a2nauty,a2uniq,a2succs;
 #endif
 
 #ifdef OUTPROC
-extern void OUTPROC(FILE*,graph*,int);
+void OUTPROC(FILE*,graph*,int);
 #endif
 #ifdef PRUNE
-extern int PRUNE(graph*,int,int);
+int PRUNE(graph*,int,int);
 #endif
 #ifdef PREPRUNE
-extern int PREPRUNE(graph*,int,int);
+int PREPRUNE(graph*,int,int);
 #endif
 #ifdef SUMMARY
-extern void SUMMARY(nauty_counter,double);
+void SUMMARY(nauty_counter,double);
 #endif
 
 /************************************************************************/
@@ -1184,7 +1183,10 @@ main(int argc, char *argv[])
     HELP; PUTVERSION;
     nauty_check(WORDSIZE,1,MAXN,NAUTYVERSIONID);
 
-    if (MAXN > 32 || MAXN > WORDSIZE || MAXN > 8*sizeof(xword))
+#if MAXN > 32 || MAXN > WORDSIZE
+    gt_abort(">E gentourng: MAXN can't be larger than 32 or WORDSIZE\n");
+#endif
+    if (MAXN > 8*sizeof(xword))
     {
         fprintf(stderr,
                 "gentourng: incompatible MAXN, WORDSIZE, or xword\n");

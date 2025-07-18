@@ -1,7 +1,8 @@
-/* delptg.c  version 3.3; B D McKay, Jan 2022. */
+/* delptg.c  version 3.4; B D McKay, Jan 2025. */
 
 #define USAGE \
- "delptg [-lq] [-a|-b] [-d#|-d#:#] [-v#|-v#:#] [-r#] [-n#] [-m#|-i] [infile [outfile]]"
+ "delptg [-lq] [-a|-b] [-d#|-d#:#] [-v#|-v#:#] [-A] [-r#]" \
+ " [-k#] [-n#] [-m#|-i] [infile [outfile]]"
 
 #define HELPTEXT \
 " Delete some vertices from a file of graphs.\n\
@@ -11,8 +12,9 @@
 \n\
     -l  Canonically label outputs\n\
     -d# -d#:# Only remove vertices with original degree in the given range\n\
-        For digraphs, the out-degree is used.\n\
+    -k# Find the #-core (recursively remove vertices of degree less than k)\n\
     -n# The number of vertices to delete (default 1).\n\
+    -A  Delete all the vertices specified by -d and/or -v\n\
     -v# -v#:# Vertex number or numbers that it is allowed to delete\n\
               (the first vertex is number 0).\n\
     -m# Lower bound on minimum degree of output graphs.\n\
@@ -45,7 +47,7 @@ writeone(graph *g, int m, int n, int *del, int ndel,
 {
     int i,j,k,nx,mx,deg;
     graph *gi,*gxi,*gq;
-    ssize_t ii;
+    size_t ii,iilim;
 #if MAXN
     graph gx[MAXN*MAXM];
     graph hx[MAXN*MAXM];
@@ -61,9 +63,11 @@ writeone(graph *g, int m, int n, int *del, int ndel,
         nx = n;
         mx = m;
     }
+    else if (ndel >= n)
+        return;
     else
     {
-        nx = n - ndel;    /* Always positive */
+        nx = n - ndel;
         mx = SETWORDSNEEDED(nx);
     }
 
@@ -75,24 +79,28 @@ writeone(graph *g, int m, int n, int *del, int ndel,
 
     if (isolates)
     {
-        for (ii = mx*(ssize_t)nx; --ii >= 0; )
-            gx[ii] = g[ii];
+        iilim = mx * (size_t)nx;
+        for (ii = 0; ii < iilim; ++ii) gx[ii] = g[ii];
         for (j = 0; j < ndel; ++j)
         {
             k = del[j];
             EMPTYSET(GRAPHROW(gx,k,mx),mx);
-            for (i = 0, gxi = gx; i < nx; ++i, gxi += mx)
-                DELELEMENT(gxi,k);
+            for (i = 0, gxi = gx; i < nx; ++i, gxi += mx) DELELEMENT(gxi,k);
         }
     }
     else
     {
-        j = 0;
-        for (i = 0; i < del[0]; ++i) lab[j++] = i;
-        for (k = 1; k < ndel; ++k)
-            for (i = del[k-1]+1; i < del[k]; ++i) lab[j++] = i;
-        for (i = del[ndel-1]+1; i < n; ++i) lab[j++] = i;
-    
+        if (ndel == 0)
+            for (j = 0; j < n; ++j) lab[j] = j;
+        else
+        {
+            j = 0;
+            for (i = 0; i < del[0]; ++i) lab[j++] = i;
+            for (k = 1; k < ndel; ++k)
+                for (i = del[k-1]+1; i < del[k]; ++i) lab[j++] = i;
+            for (i = del[ndel-1]+1; i < n; ++i) lab[j++] = i;
+        }
+ 
         EMPTYSET(gx,nx*(size_t)mx);
     
         for (i = 0, gxi = (set*)gx; i < nx; ++i, gxi += mx)
@@ -110,7 +118,8 @@ writeone(graph *g, int m, int n, int *del, int ndel,
     {
         for (i = 0, gxi = (set*)gx; i < nx; ++i, gxi += mx)
         {
-            deg = 0;
+            if (digraph) deg = 0;
+            else deg = (ISELEMENT(gxi,i) != 0);
             for (j = 0; j < mx; ++j) deg += POPCOUNT(gxi[j]);
             if (deg < outmindeg) return;
         }
@@ -128,6 +137,60 @@ writeone(graph *g, int m, int n, int *del, int ndel,
     else if (outcode == SPARSE6)        writes6(outfile,gq,mx,nx);
     else                                writeg6(outfile,gq,mx,nx);
     ++nout;
+}
+
+/**************************************************************************/
+
+static void
+kcore(graph *g, int m, int n, int karg, int outmindeg, int isolates)
+/* Make the karg-core of g */
+{
+    DYNALLSTAT(int,deg,deg_sz);
+    DYNALLSTAT(int,queue,queue_sz);
+    int top,i,j,d;
+    graph *gi;
+
+    DYNALLOC1(int,deg,deg_sz,n,"malloc");
+    DYNALLOC1(int,queue,queue_sz,n,"malloc");
+
+    top = 0;
+    for (i = 0, gi = g; i < n; ++i, gi += m)
+    {
+        if (digraph) d = 0;
+        else d = (ISELEMENT(gi,i) != 0);
+        for (j = 0; j < m; ++j) d += POPCOUNT(gi[j]);
+        if (d < karg)
+        {
+            queue[top++] = i;
+            deg[i] = -1;
+        }
+        else
+            deg[i] = d;
+    }
+
+    while (top)
+    {
+        i = queue[--top];
+        gi = g + i*m;
+        for (j = -1; (j = nextelement(gi,m,j)) >= 0; )
+        {
+            if (deg[j] >= 0)
+            {
+                if (deg[j] <= karg) 
+                {
+                    queue[top++] = j;
+                    deg[j] = -1;
+                }
+                else
+                    --deg[j];
+            }
+        }
+    }
+
+    top = 0;
+    for (i = 0; i < n; ++i)
+        if (deg[i] < 0) queue[top++] = i;
+    writeone(g,m,n,queue,top,outmindeg,isolates);
 }
 
 /**************************************************************************/
@@ -270,8 +333,8 @@ main(int argc, char *argv[])
     char *infilename,*outfilename;
     FILE *infile;
     boolean badargs,quiet,dswitch,nswitch,vswitch,mswitch,Sswitch;
-    boolean adj,nonadj,isolates,delrand;
-    int i,j,m,n,v,argnum;
+    boolean adj,nonadj,isolates,delrand,Aswitch,kswitch;
+    int i,j,m,n,v,argnum,karg;
     int ndel,outmindeg;
     int codetype;
     graph *g;
@@ -296,8 +359,8 @@ main(int argc, char *argv[])
     HELP; PUTVERSION;
 
     infilename = outfilename = NULL;
-    badargs = vswitch = mswitch = Sswitch = FALSE;
-    dswitch = nswitch = quiet = FALSE;
+    badargs = vswitch = mswitch = Sswitch = Aswitch = FALSE;
+    dswitch = nswitch = quiet = kswitch = FALSE;
     adj = nonadj = isolates = delrand = FALSE;
 
     argnum = 0;
@@ -316,8 +379,10 @@ main(int argc, char *argv[])
                 else SWBOOLEAN('a',adj)
                 else SWBOOLEAN('b',nonadj)
                 else SWBOOLEAN('i',isolates)
+                else SWBOOLEAN('A',Aswitch)
                 else SWULL('S',Sswitch,seed,"ranlabg -S")
                 else SWINT('n',nswitch,ndel,">E delptg -n")
+                else SWINT('k',kswitch,karg,">E delptg -k")
                 else SWRANGE('d',":-",dswitch,mindeg,maxdeg,">E delptg -d")
                 else SWRANGE('v',":-",vswitch,minv,maxv,">E delptg -v")
                 else SWINT('m',mswitch,outmindeg,">E delptg -m")
@@ -341,6 +406,14 @@ main(int argc, char *argv[])
     if (delrand && (adj || nonadj))
         gt_abort(">E delptg: -r is incompatible with -a and -b\n");
 
+    if (Aswitch && !dswitch && !vswitch)
+        gt_abort(">E delptg: -d or -v is required if -A is used\n");
+    if (Aswitch && (adj || nonadj || nswitch || delrand || kswitch))
+        gt_abort(">E delptg: -A is incompatible with -a, -b, -n, -k and -r\n");
+    if (kswitch && (adj || nonadj || nswitch || delrand || dswitch))
+        gt_abort(
+            ">E delptg: -k is incompatitble with -a, -n, -n, -r and -d\n");
+
     if (delrand)
     {
         if (!Sswitch) seed = INITRANBYTIME;
@@ -362,6 +435,7 @@ main(int argc, char *argv[])
                 (adj?"a":""),(nonadj?"b":""),(isolates?"i":""));
         if (dswitch) fprintf(stderr," -d%ld:%ld",mindeg,maxdeg);
         if (nswitch) fprintf(stderr," -n%d",ndel);
+        if (kswitch) fprintf(stderr," -k%d",karg);
         if (vswitch) fprintf(stderr," -v%ld:%ld",minv,maxv);
         if (mswitch) fprintf(stderr," -m%d",outmindeg);
         if (delrand) fprintf(stderr," -r%ld -S%llu",numrand,seed);
@@ -426,7 +500,7 @@ main(int argc, char *argv[])
         if ((g = readgg(infile,NULL,0,&m,&n,&digraph)) == NULL) break;
         ++nin;
 
-        if (n <= ndel)
+        if (n <= ndel && !kswitch)
         {
             FREES(g);
             continue;
@@ -450,28 +524,37 @@ main(int argc, char *argv[])
         }
 
         nvok = 0;
-        for (v = 0, gv = g; v < n && v <= actmaxv; ++v, gv += m)
+        if (!kswitch)
         {
-            if (v < iminv) continue;
-            degv = 0;
-            for (i = 0; i < m; ++i) degv += POPCOUNT(gv[i]);
-            if (degv < mindeg || degv > maxdeg) continue;
-            okverts[nvok++] = v;
+            for (v = 0, gv = g; v < n && v <= actmaxv; ++v, gv += m)
+            {
+                if (v < iminv) continue;
+                if (digraph) degv = 0;
+                else         degv = (ISELEMENT(gv,v) != 0);
+                for (i = 0; i < m; ++i) degv += POPCOUNT(gv[i]);
+                if (degv < mindeg || degv > maxdeg) continue;
+                okverts[nvok++] = v;
+            }
+
+            if (!Aswitch && nvok < ndel)
+            {
+                FREES(g);
+                continue;
+            }
+
+            if (adj || nonadj)
+                for (i = 0; i < nvok; ++i) ADDELEMENT(avail,okverts[i]);
         }
 
-        if (nvok < ndel)
+        if (kswitch)
         {
-            FREES(g);
-            continue;
+            if (digraph)
+                gt_abort(">E delptg: -k is not implemented for digraphs\n");
+            kcore(g,m,n,karg,outmindeg,isolates);
         }
-
-        if (adj || nonadj)
-        {
-            for (i = 0; i < nvok; ++i)
-                ADDELEMENT(avail,okverts[i]);
-        }
-
-        if (delrand)
+        else if (Aswitch)
+            writeone(g,m,n,okverts,nvok,outmindeg,isolates);
+        else if (delrand)
         {
             for (irand = 0; irand < numrand; ++irand)
                 delrandom(ndel,del,g,m,n,outmindeg,okverts,nvok,isolates);

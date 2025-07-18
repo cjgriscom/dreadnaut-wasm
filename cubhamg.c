@@ -200,6 +200,7 @@ static int classin(cubgraph,cubgraph,nodedata*,int,int,int,int*,int);
 static int maxlevel,maxclassstack;
 #endif
 
+#if 0
 static void
 dummy(void)
 {
@@ -288,6 +289,7 @@ check_it(int index, cubgraph g, cubgraph eno, edgevec v1, edgevec v2,
                 dummy();
             }
 }
+#endif
 
 static void
 cubinit(cubgraph g, cubgraph eno, edgevec v1, edgevec v2, int nv, int ne)
@@ -1791,6 +1793,7 @@ biconnected_cub_v(cubgraph cub, int vv, int n)
 
 /**************************************************************************/
 
+#if 0
 static boolean
 biconnected_v(graph *g, int vv, int m, int n)
 /* test whether g-vv is biconnected */
@@ -1858,6 +1861,7 @@ biconnected_v(graph *g, int vv, int m, int n)
         }
     }
 }
+#endif
 
 /**************************************************************************/
 
@@ -1877,6 +1881,7 @@ triconnected_cub(cubgraph cub, int n)
 
 /**************************************************************************/
 
+#if 0
 static boolean
 gtocub(graph *g, int m, int n, cubgraph cub, int *pne)
 /* Convert nauty-format graph into cubgraph.  Returns FALSE if there
@@ -1908,6 +1913,7 @@ gtocub(graph *g, int m, int n, cubgraph cub, int *pne)
     *pne = nde / 2;
     return TRUE;
 }
+#endif
 
 /**************************************************************************/
 
@@ -2179,6 +2185,7 @@ main(int argc, char *argv[])
                 fprintf(msgfile,"Input " COUNTER_FMT " has " COUNTER_FMT
                     " cycles.\n",numread,count);
             totalcount += count;
+            mincount = maxcount = 0;
             if (numread == 1) mincount = maxcount = count;
             else if (count < mincount) mincount = count;
             else if (count > maxcount) maxcount = count;

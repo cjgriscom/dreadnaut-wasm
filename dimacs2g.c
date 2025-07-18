@@ -20,13 +20,6 @@
 
 #include "gtools.h" 
 
-#if HAVE_GUNZIP && HAVE_POPEN
-#if !POPEN_DEC
-extern FILE *popen(const char *command, const char *type);
-extern int pclose(FILE *stream);
-#endif
-#endif
-
 #define GUNZIP "gunzip -c"
 
 #define MAXCOMMENT 200

@@ -129,11 +129,11 @@ static nauty_counter oldlo;
 #endif
 
 #ifdef INPUTGRAPH
-extern int INPUTGRAPH(graph*,int,int);
+int INPUTGRAPH(graph*,int,int);
 #endif
 
 #ifdef INPUTGRAPHC
-extern int INPUTGRAPHC(graph*,int*,int,int);
+int INPUTGRAPHC(graph*,int*,int,int);
 #endif
 
 #if defined(OUTPROC) && defined(OUTPROCC)
@@ -141,15 +141,15 @@ extern int INPUTGRAPHC(graph*,int*,int,int);
 #endif
 
 #ifdef OUTPROC
-extern void OUTPROC(FILE*,int,int,unsigned long,int*,int*,int*);
+void OUTPROC(FILE*,int,int,unsigned long,int*,int*,int*);
 #endif
 
 #ifdef OUTPROCC
-extern void OUTPROCC(FILE*,int,int,unsigned long,int*,int*,int*,int*);
+void OUTPROCC(FILE*,int,int,unsigned long,int*,int*,int*,int*);
 #endif
 
 #ifdef SUMMARY
-extern void SUMMARY(void);
+void SUMMARY(void);
 #endif
 
 /**************************************************************************/
@@ -766,8 +766,8 @@ vmulti(graph *g, int nfixed, long minedges, long maxedges, long maxmult,
     }
 
     if ((isreg || lswitch) && (maxdeg & n & 1) == 1) return;
-    // if (isreg && j0 >= 0 && maxdeg > 0) return;             DECODE
-    // if (lswitch && j0 >= 0 && (maxdeg&1) == 1) return;
+    /* if (isreg && j0 >= 0 && maxdeg > 0) return;             DECODE
+       if (lswitch && j0 >= 0 && (maxdeg&1) == 1) return; */
 
 #ifdef PATHCOUNTS
     ++count3;
@@ -886,7 +886,7 @@ main(int argc, char *argv[])
 {
     graph *g;
     graph gg[MAXNV*SETWORDSNEEDED(MAXNV)];
-    int i,m,n,ne,codetype;
+    int i,m,n,ne=0,codetype;
     int argnum,j,nfixed,maxdeg,regdeg,ldeg;
     char *arg,sw;
     boolean badargs;

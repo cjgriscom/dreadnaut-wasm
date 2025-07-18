@@ -102,14 +102,14 @@ main(int argc, char *argv[])
     sparsegraph sg,sh;
     int m,n,codetype;
     int argnum,j,outcode;
-    char *arg,sw,*fmt;
+    char *arg,sw,*fmt=NULL;
     boolean badargs,digraph;
     boolean sswitch,gswitch,qswitch,fswitch,Oswitch;
     boolean iswitch,Iswitch,Kswitch,Mswitch,Sswitch;
     boolean uswitch,tswitch,Cswitch,Wswitch,zswitch;
     boolean dooutput;
     int tabsize,outinvar;
-    int inv,mininvarlevel,maxinvarlevel,invararg;
+    int inv,mininvarlevel=1,maxinvarlevel=1,invararg;
     long minil,maxil;
     double t;
     char *infilename,*outfilename;

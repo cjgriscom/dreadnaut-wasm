@@ -74,6 +74,12 @@ static unsigned long splitcases;
  * Before any graph is output, DEGPRUNE will have been called for every
  * vertex, but it cannot be assumed that DEGPRUNE will be called in order
  * of vertex number.
+ *
+ * Instead of DEGPRUNE, you can use DEGPRUNE2, with prototype
+ *     int DEGPRUNE2(int *deg, int *indeg, int *outdeg, int v, int n)
+ * This is same with the addition of the argument *deg that gives the
+ * degrees of the undirected input graph.
+ * You aren't allowed to use both DEGPRUNE and DEGPRUNE2.
  */
 
 /* INPUTGRAPH feature
@@ -103,20 +109,29 @@ static unsigned long splitcases;
  */
 
 #ifdef DEGPRUNE
+#ifdef DEGPRUNE2
+#error "You can't define both DEGPRUNE and DEGPRUNE2"
+#endif
 static int lastlev[MAXNV],indeg[MAXNV],outdeg[MAXNV];
-extern int DEGPRUNE(int*,int*,int,int);
+int DEGPRUNE(int*,int*,int,int);
+#endif
+
+#ifdef DEGPRUNE2
+static int lastlev[MAXNV],deg[MAXNV],indeg[MAXNV],outdeg[MAXNV];
+int DEGPRUNE2(int*,int*,int*,int,int);
+#define DEGPRUNE(a,b,c,d) DEGPRUNE2(deg,a,b,c,d)
 #endif
 
 #ifdef INPUTGRAPH
-extern int INPUTGRAPH(graph*,int,int);
+int INPUTGRAPH(graph*,int,int);
 #endif
 
 #ifdef PROCESS
-extern void PROCESS(FILE*,graph*,int);
+void PROCESS(FILE*,graph*,int);
 #endif
 
 #ifdef SUMMARY
-extern void SUMMARY(void);
+void SUMMARY(void);
 #endif
 
 /* #define GROUPTEST */
@@ -594,7 +609,7 @@ direct(graph *g, int nfixed, long minarcs, long maxarcs,
     setword workspace[200];
     grouprec *group;
     long ne;
-    int i,j,k,j0,j1,deg;
+    int i,j,k,j0,j1,degg;
     int isol0,isol1;  /* isolated vertices before and after nfixed */
     set *gi;
     int lab[MAXNV],ptn[MAXNV],orbits[MAXNV];
@@ -610,16 +625,22 @@ direct(graph *g, int nfixed, long minarcs, long maxarcs,
     ne = 0;
     for (i = 0, gi = g; i < n; ++i, gi += m)
     {
-        deg = 0;
-        for (j = 0; j < m; ++j) deg += POPCOUNT(gi[j]);
-        if (deg == 0)
+        degg = 0;
+        for (j = 0; j < m; ++j) degg += POPCOUNT(gi[j]);
+#ifdef DEGPRUNE2
+        deg[i] = degg;
+#endif
+#ifdef EVENDEG
+        if ((degg & 1)) return;
+#endif
+        if (degg == 0)
         {
             lab[++j0] = i;
             if (i < nfixed) ++isol0; else ++isol1;
         }
         else
             lab[--j1] = i;
-        ne += deg;
+        ne += degg;
     }
     ne /= 2;
     ntisol = (isol0 >= 2 || isol1 >= 2);
@@ -647,7 +668,7 @@ direct(graph *g, int nfixed, long minarcs, long maxarcs,
             if (DEGPRUNE(indeg,outdeg,i,n)) break;
         if (i == n)
 #endif
-            trythisone(NULL,0,m,n);    // only in case of 0 edges
+            trythisone(NULL,0,m,n);    /* only in case of 0 edges */
         return;
     }
 #endif

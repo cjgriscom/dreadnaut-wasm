@@ -15,7 +15,7 @@
       n    : the number of vertices\n\
  mine:maxe : a range for the number of edges\n\
               #:0 means '# or more' except in the case 0:0\n\
-   res/mod : only generate subset res out of subsets 0..mod-1\n\
+   res/mod : only generate subset res out of subsets 0..mod-1 (see below)\n\
 \n\
      -c    : only write connected graphs\n\
      -C    : only write biconnected graphs\n\
@@ -45,9 +45,14 @@
 \n\
      -q    : suppress auxiliary output (except from -v)\n\
 \n\
-  See program text for much more information.\n"
-
-
+ res/mod splitting is controlled by two parameters -X# and -x# whose default\n\
+ values are displayed when splitting is used. Increasing them will make the\n\
+ division into parts more even at the expense of more overhead, but you must\n\
+ use the same values for all parts. Splitting obeys the laws of modular\n\
+ arithmetic, for example 3/7 is the union of 3/14 and 10/14, but when\n\
+ subdividing like this you must manually provide the same -X and -x values\n\
+ to the smaller parts.\n"
+ 
 /*  Parameters:
 
              n    = the number of vertices (1..MAXN)
@@ -323,7 +328,6 @@ efficient to use the res/mod feature than to split by numbers of edges.
 **************************************************************************
 
     Author:   B. D. McKay, Sep 1991 and many later dates.
-              Copyright  B. McKay (1991-2018).  All rights reserved.
               This software is subject to the conditions and waivers
               detailed in the file nauty.h.
 
@@ -548,16 +552,16 @@ static TLS_ATTR int maxebf[66] =    /* max edges for -bf */
 #endif
 
 #ifdef OUTPROC
-extern void OUTPROC(FILE*,graph*,int);
+void OUTPROC(FILE*,graph*,int);
 #endif
 #ifdef PRUNE
-extern int PRUNE(graph*,int,int);
+int PRUNE(graph*,int,int);
 #endif
 #ifdef PREPRUNE
-extern int PREPRUNE(graph*,int,int);
+int PREPRUNE(graph*,int,int);
 #endif
 #ifdef SUMMARY
-extern void SUMMARY(nauty_counter,double);
+void SUMMARY(nauty_counter,double);
 #endif
 
 #if defined(PRUNE) || defined(PREPRUNE)
@@ -736,6 +740,7 @@ isbiconnected(graph *g, int n)
 
 /**********************************************************************/
 
+#if 0
 static void
 gcomplement(graph *g, graph *gc, int n)
 /* Take the complement of g and put it in gc */
@@ -747,6 +752,7 @@ gcomplement(graph *g, graph *gc, int n)
     for (i = 0; i < n; ++i)
         gc[i] = g[i] ^ all ^ bit[i];
 }
+#endif
 
 /**********************************************************************/
 

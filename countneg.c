@@ -44,7 +44,7 @@ main(int argc, char *argv[])
     boolean nswitch,eswitch,qswitch;
     boolean badargs;
     nauty_counter nin;
-    int n;
+    int n,nprev;
     size_t e;
     long long lln,lle;
     double t0,t1;
@@ -107,23 +107,36 @@ main(int argc, char *argv[])
     nin = 0;
     root = NULL;
     t0 = CPUTIME;
+    nprev = 0;
 
     while ((line = gtools_getline(infile)) != NULL)
     {
-        if (line[0] == ';')
-            gt_abort(">E incremental sparse6 is not supported; use countg\n");
         ++nin;
-        if (eswitch)
+        if (line[0] == ';')
+        {
+            if (eswitch)
+                gt_abort(
+             ">E incremental sparse6 is not supported with -e; use countg\n");
+            else
+            {
+                lln = nprev;
+                lle = -1;
+            }
+        }
+        else if (eswitch)
         {
             stringcounts(line,&n,&e);
+            nprev = n;
             lln = (nswitch ? n : -1);
             lle = e;
         }
         else
         {
-            lln = (long long) graphsize(line);
+            nprev = graphsize(line);
+            lln = nprev;
             lle = -1;
         }
+        /* Note -ne is default, so "none" is impossible. */
  
         splay_insert(&root,lln,lle);
     }

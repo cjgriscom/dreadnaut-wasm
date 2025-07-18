@@ -1,6 +1,6 @@
 /* testg.c : Find properties of graphs.  This is the source file for
    both pickg (select by property) and countg (count by property).
-   Version 2.5 of Aug 2023. */
+   Version 2.9 of July 2025. */
 /* TODO - write a header if input has one;
           Fix clunky practice of storing a pointer in a long long. */
 
@@ -29,6 +29,7 @@
                  separately even if they are the same, and the count at\n\
                  the end of the line. Also, no total is written.\n\
      -2          The same as -1 but counts are not written.\n\
+     -9          Flush the output after each graph (expensive if many graphs)\n\
      -q          Suppress informative output.\n\
 \n\
   Constraints:\n\
@@ -65,10 +66,10 @@
      -i#  min common nbrs of adjacent vertices;     -ii# maximum\n\
      -j#  min common nbrs of non-adjacent vertices; -jj# maximum\n\
      -x#  number of sources            -xx#  number of sinks\n\
-     -WW# number of diamonds\n\
+     -WW# number of diamonds           -HH#  number of hexagons\n\
      -N#  chromatic number (limited to WORDSIZE colours)\n\
      -NN# chromatic index (limited to max degree WORDSIZE-1)\n\
-     -AA# class (chromatic index - maximum degree + 1)\n\
+     -A# class (chromatic index - maximum degree + 1)\n\
      -G#  connectivity                 -GG# edge connectivity\n\
 \n\
   Sort keys:\n\
@@ -87,10 +88,10 @@
   to output an incremental graph whose predecessor is not output.\n\
 \n\
   Some sort keys have boolean variants with parameters:\n\
-   --N#  #-colourable (i.e. chromatic number <= #)\n\
-   --A#  #-edge colourable\n\
-   --G#  #-connected (i.e. connectivity >= #)\n\
-   --GG# #-edge connected\n"
+   --N#   #-colourable (i.e. chromatic number <= #)\n\
+   --NN#  #-edge colourable\n\
+   --G#   #-connected (i.e. connectivity >= #)\n\
+   --GG#  #-edge connected\n"
 
 #include "gtools.h"
 #include "gutils.h"
@@ -100,7 +101,7 @@
 #include "nauconnect.h"
 
 /*
-Available letters: wy GIJ
+Available letters: wy IJ
 
 How to add a new property:
 
@@ -358,7 +359,10 @@ static struct constraint_st    /* Table of Constraints */
 #define I_GG 51
    {'G',TRUE,TRUE,FALSE,0,FALSE,FALSE,0,
         -NOLIMIT,NOLIMIT,"econnect","%d-edge connected",0,FALSE,INTTYPE,0},
-#define I_Q 52
+#define I_HH 52
+   {'H',TRUE,FALSE,FALSE,0,FALSE,FALSE,0,
+        -NOLIMIT,NOLIMIT,"hexagons",NULL,0,FALSE,INTTYPE,0},
+#define I_Q 53
 #if defined(USERDEF) || defined(LUSERDEF)
    {'Q',FALSE,QDIGRAPH,FALSE,0,FALSE,FALSE,0,
         -NOLIMIT,NOLIMIT,USERDEFNAME,NULL,0,FALSE,INTTYPE,0}
@@ -1017,7 +1021,8 @@ compute(graph *g, int m, int n, int code, boolean digraph)
             exit(1);
 
         case I_Y:
-            VAL(I_Y) = cyclecount(g,m,n);
+            if (HI(I_Y) != NOLIMIT) VAL(I_Y) = cyclecountlim(g,HI(I_Y),m,n);
+            else                    VAL(I_Y) = cyclecount(g,m,n);
             COMPUTED(I_Y) = TRUE;
             break;
 
@@ -1035,6 +1040,11 @@ compute(graph *g, int m, int n, int code, boolean digraph)
         case I_W:
             VAL(I_W) = numsquares(g,m,n);
             COMPUTED(I_W) = TRUE;
+            break;
+
+        case I_HH:
+            VAL(I_HH) = numhexagons(g,m,n);
+            COMPUTED(I_HH) = TRUE;
             break;
 
         case I_WW:
@@ -1061,8 +1071,9 @@ compute(graph *g, int m, int n, int code, boolean digraph)
             break;
 
         case I_N:
-            lowneeded = (LO(I_N) < 1 ? 1 : LO(I_N));
+            lowneeded = (LO(I_N) < 1 ? 1 : LO(I_N)-1);
             highneeded = (HI(I_N) > n ? n : HI(I_N));
+            if (lowneeded >= highneeded) lowneeded = highneeded-1;
 
             if (!ISKEY(I_N) && lowneeded == 1) lowneeded = highneeded;
             
@@ -1070,6 +1081,7 @@ compute(graph *g, int m, int n, int code, boolean digraph)
             {
                 if (PARAM(I_N) < lowneeded) lowneeded = PARAM(I_N);
                 if (highneeded == n) highneeded = PARAM(I_N);
+                if (highneeded > n) highneeded = n;
             }
 
             VAL(I_N) = chromaticnumber(g,m,n,lowneeded,highneeded);
@@ -1392,7 +1404,7 @@ decodekeys(char *s)
                     arg_int(&si,&pval,"testg --parameter");
                     --si;
                     PARAM(j) = pval;
-                    pname = malloc(strlen(PARAMID(j)+20));
+                    pname = malloc(strlen(PARAMID(j))+30);
                     sprintf(pname,PARAMID(j),pval);
                     PARAMID(j) = pname;
                     NEEDED(j) |= 4;
@@ -1436,7 +1448,7 @@ main(int argc, char *argv[])
     unsigned long long nin,nout;
     int argnum,i,j,nprev,mprev,digbad;
     char *arg,sw,*baseptr,*bp;
-    boolean badargs,lastwritten,digraph;
+    boolean badargs,lastwritten,digraph,first;
     long pval1,pval2,maxin;
     boolean fswitch,pswitch,Vswitch,vswitch,Xswitch,qswitch;
     unsigned long long cmask;
@@ -1602,6 +1614,7 @@ main(int argc, char *argv[])
 
         if (numkeys > 0)
         {
+            first = TRUE;
             fprintf(stderr," --");
             for (j = 0; j < numkeys; ++j)
                 if (j == numsplitkeys && j != 0)
@@ -1612,22 +1625,28 @@ main(int argc, char *argv[])
                         fprintf(stderr,":%c",SYMBOL(key[j]));
                     if (ISPARAMETERIZED(key[j]))
                         fprintf(stderr,"%d",PARAM(key[j]));
+                    first = FALSE;
                 }
                 else
                 {
+                    if (!first) fprintf(stderr,",");
                     if (ISDOUBLED(key[j]))
                         fprintf(stderr,"%c%c",SYMBOL(key[j]),SYMBOL(key[j]));
                     else
                         fprintf(stderr,"%c",SYMBOL(key[j]));
                     if (ISPARAMETERIZED(key[j]))
                         fprintf(stderr,"%d",PARAM(key[j]));
+                    first = FALSE;
                 }
         }
 
         if (havecon) fprintf(stderr," -");
+        first = TRUE;
         for (j = 0; j < NUMCONSTRAINTS; ++j)
         if (ISCONSTRAINT(j))
         {
+            if (!first) fprintf(stderr,",");
+            first = FALSE;
             if (INVERSE(j)) fprintf(stderr,"~");
             if (ISDOUBLED(j))
             {

@@ -2,13 +2,14 @@ This is the license for the software package Nauty and
 Traces, package versions 2.6r3 and later.
 
 Five categories of software are included in the package:
-A. All files not listed as B-E below, copyright Brendan McKay (1984-)
+A. All files not listed as B-G below, copyright Brendan McKay (1984-)
 B. Files traces.h, traces.c and dretodot.c, copyright Adolfo Piperno (2008-)
 C. File watercluster2.c and genposetg.c, copyright Gunnar Brinkmann (2009-)
 D. Files planarity.h and planarity.c, copyright Magma project.
 E. Files nautycliquer.h and nautycliquer.c, copyright to Sampo
    Niskanen and Patric Östergård.
 F. Much of file nauchromatic.c, copyright Gordon Royle.
+G. The code in nausha.c was put into the public domain by Brad Conte.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this software except in compliance with the License.

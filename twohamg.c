@@ -546,7 +546,7 @@ searchnode(int level, int n, int *e, int nblue, int nred)
     if (bestscore == 0 && nred + nblue > 0)
         return FALSE;   /* Disconnected */
 
-    ran = KRAN(2*nbest);
+    ran = (long)KRAN(2*nbest);
     best = beste[ran/2];
 
     if ((ran&1))

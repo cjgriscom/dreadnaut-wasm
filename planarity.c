@@ -803,7 +803,7 @@ sparseg_adjl_remove_dir_edge_no_red (t_ver_sparse_rep *V,
       A will be left with "holes"
     */
 {
-    int         cur_e, prev_e;
+    int         cur_e=0, prev_e=0;
 
     cur_e = V[u].first_edge;
     if (cur_e == NIL)
@@ -1061,7 +1061,7 @@ sparseg_adjl_dir_edge_exists (t_ver_sparse_rep *V, int n,
       does the directed edge [u, v] already exist in the graph
     */
 {
-    int         cur_e, prev_e;
+    int         cur_e /*, prev_e*/;
 
     cur_e = V[u].first_edge;
     if (cur_e == NIL)
@@ -1074,7 +1074,7 @@ sparseg_adjl_dir_edge_exists (t_ver_sparse_rep *V, int n,
 
     while (A[cur_e].end_vertex != v)
     {
-        prev_e = cur_e;
+       /* prev_e = cur_e; */
         cur_e = A[cur_e].next;
         if (cur_e == NIL)
             /*
@@ -2117,7 +2117,9 @@ embedg_VES_set_orientation (t_ver_edge *embed_graph, int n, int *ver_orient)
 
 /* aproto: beginstatic -- don't touch this!! */
 static void embedg_dlcl_rec_free (t_dlcl *);
+#if 0
 static void embedg_dlcl_rec_insert_right (t_dlcl *, t_dlcl *);
+#endif
 static void embedg_dlcl_rec_insert_left (t_dlcl *, t_dlcl *);
 static void embedg_dlcl_rec_retrieve (t_dlcl *);
 static void embedg_dlcl_rec_delete (t_dlcl *);
@@ -2180,7 +2182,7 @@ embedg_dlcl_print (t_dlcl *l)
     fprintf(stdout,"\n");
 }
 
-
+#if 0
 static void 
 embedg_dlcl_rec_insert_right (t_dlcl *l, t_dlcl *r)
 {
@@ -2195,7 +2197,7 @@ embedg_dlcl_rec_insert_right (t_dlcl *l, t_dlcl *r)
     r->left = tmp_l;
     tmp_r->left = r;
 }
-
+#endif
 
 static void 
 embedg_dlcl_rec_insert_left (t_dlcl *l, t_dlcl *r)
@@ -2600,19 +2602,18 @@ sparseg_adjl_is_planar (
 
         if (!embedg_dlcl_is_empty(p))
         {
-            int       w;
-            
-            w = p->info;
             IF_DEB(
+                   int       w;
+                   w = p->info;
                    fprintf(stdout, "top level, before walkup for w %d\n", w);
-                   )
+                  )
             embedg_walkup(*embed_graph, n, v, p);
 
             p = embedg_dlcl_list_next(p);
             while (p != be_l)
             {
-                w = p->info;
                 IF_DEB(
+                       w = p->info;
                        fprintf(stdout, "top level, before walkup for w %d\n", w);
                        )
                 embedg_walkup(*embed_graph, n, v, p);
@@ -4687,7 +4688,7 @@ embedg_recover_embedding (
       - for edge e, find its index in A: this should be found
         in either the embed_graph[v] record of the mult_edges[v] record
     */
-    int          index_embed, v, mult, w, v_w_in_embed, new_first_edge;
+    int          index_embed, v, mult, w, v_w_in_embed=0, new_first_edge;
     boolean      set_next;
 
     IF_DEB(
@@ -5602,7 +5603,7 @@ embedg_get_reduced_obs (t_dlcl **obs, int n)
     for (v = 0; v < n; v++)
     {
         t_dlcl   *n_l, *n_l_b, *p, *new_n_v, *n_l_x, *b_in_n_x;
-        int      a, b, n_x;
+        int      b, n_x;
 
         n_l = reduced[v];
         while (!embedg_dlcl_is_empty(n_l)
@@ -5611,7 +5612,7 @@ embedg_get_reduced_obs (t_dlcl **obs, int n)
               pick out which  vertices have deg 2
             */
         {
-            a = n_l->info;
+           /*  a = n_l->info; */
             b = embedg_dlcl_list_next(n_l)->info;
             /*
               we remove the edge (v, b), or rather, we identify v and b:
@@ -5907,8 +5908,8 @@ embedg_obstruction (
     
     /*
       this is magma code - must be removed
-    */
     // float      sttime, time_to_now;
+    */
  
  IF_CPU(
     sttime = time_current_user();
@@ -7554,6 +7555,7 @@ sparseg_adjl_dfs_preprocessing (
     lowpoint_order = (int *) mem_malloc(sizeof(int) * n);
     temp = (t_dlcl **) mem_malloc(sizeof(t_dlcl *) * n);
     new_dfs_tree = (t_dlcl **) mem_malloc(sizeof(t_dlcl *) * n);
+    temp[0] = 0;
 
     /*
       finally, three more holding arrays: a trick to remember which
@@ -9630,11 +9632,12 @@ embedg_mark_minor_D (t_dlcl **dfs_tree, t_dlcl **back_edges,
         int c, int x, int y, int w, int *path_v, int *path_e,
         int nbr_v, int entry_in_path_e)
 {
-    int          vv, p_x, p_y, u_x, u_y, u;
-
+    int          vv, u_x, u_y, u;
+    IF_DEB( int p_x; int p_y; 
+            p_x = path_v[0];
+            p_y = path_v[nbr_v];
+          )
     vv = c + n;
-    p_x = path_v[0];
-    p_y = path_v[nbr_v];
     /*
       see embedg_iso_get_highest_x_y_path for the above
     */

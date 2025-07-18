@@ -1,5 +1,5 @@
 /* gtools.c : Common routines for gtools programs. */
-/* Version 4.6, Apr 2024. */
+/* Version 4.7, Dec 2024. */
 
 /* Todo: size check if MAXN>0; option to free memory */
 
@@ -20,16 +20,12 @@ TLS_ATTR boolean is_pipe;
 #define OFF_T_VER off_t
 #else
 #if !FTELL_DEC
-extern long ftell(FILE*);
-extern int fseek(FILE*,long,int);
+long ftell(FILE*);
+int fseek(FILE*,long,int);
 #endif
 #define FSEEK_VER fseek
 #define FTELL_VER ftell
 #define OFF_T_VER long
-#endif
-
-#if !POPEN_DEC
-extern FILE *popen(const char*,const char*);
 #endif
 
 /*
@@ -61,6 +57,7 @@ extern FILE *popen(const char*,const char*);
                  very small graphs.
   Version 4.5: Add arg_ull()
   Version 4.6: Add readg_loops()
+  Version 4.7: Add reqm<0 to readgg()
 */
 
 #define B(i) (1 << ((i)-1))
@@ -459,6 +456,7 @@ getecline(FILE *f)     /* read an edge_code line */
         bodysize = c1;
         edgesize = 1;
         headsize = 1;
+        sizesize = 0;
     }
     else
     {
@@ -666,6 +664,7 @@ stringtograph(char *s, graph *g, int m)
     n = graphsize(s);
     if (n == 0) return;
 
+    x = 0;
     p = s + (s[0] == ':' || s[0] == '&') + SIZELEN(n);
 
     if (TIMESWORDSIZE(m) < n)
@@ -806,6 +805,7 @@ stringtograph_inc(char *s, graph *g, int m,
     set *gi,*gj;
     boolean done;
 
+    x = 0;
     if (s[0] == ';' && !prevg)
         gt_abort(">E stringtograph_inc missing prior graph\n");
 
@@ -950,6 +950,7 @@ readgg(FILE *f, graph *g, int reqm, int *pm, int *pn, boolean *digraph)
    f = an open file 
    g = place to put the answer (NULL for dynamic allocation) 
    reqm = the requested value of m (0 => compute from n) 
+        Negative values say compute from n but never bigger than this
    *pm = the actual value of m 
    *pn = the value of n 
    *digraph = whether the input is a digraph
@@ -999,7 +1000,11 @@ readgg(FILE *f, graph *g, int reqm, int *pm, int *pn, boolean *digraph)
     else if (reqm > 0)
         m = reqm;
     else
-        m = (n + WORDSIZE - 1) / WORDSIZE;
+    {
+        m = SETWORDSNEEDED(n);
+        if (reqm < 0 && m + reqm < 0)
+            gt_abort(">E readgg: reqm insufficient\n");
+    }
 
     if (g == NULL)
     {
@@ -1268,6 +1273,7 @@ stringtosparsegraph(char *s, sparsegraph *sg, int *nloops)
     n = graphsize(s);
 
     q = s + (s[0] == ':' || s[0] == '&') + SIZELEN(n);
+    x = 0;
 
     sg->nv = n;
 
@@ -2702,7 +2708,7 @@ void
 arg_int(char **ps, int *val, char *id)
 {
     int code;
-    long longval;
+    long longval=0;
 
     code = longvalue(ps,&longval);
     *val = longval;

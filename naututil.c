@@ -1,10 +1,9 @@
 /*****************************************************************************
 *                                                                            *
-* miscellaneous utilities for use with nauty 2.8.                            *
+* miscellaneous utilities for use with nauty 2.9.                            *
 * None of these procedures are needed by nauty, but all are by dreadnaut.    *
 *                                                                            *
-*   Copyright (1984-2024) Brendan McKay.  All rights reserved.               *
-*   Subject to waivers and disclaimers in nauty.h.                           *
+*   Subject to the conditions and disclaimers in the file COPYRIGHT.         *
 *                                                                            *
 *   CHANGE HISTORY                                                           *
 *       10-Nov-87 : final changes for version 1.2                            *
@@ -80,12 +79,15 @@
 *       13-Jun-23 : simplify sethash() without changing the value            *
 *        5-Apr-24 : add numloops() and numloops_sg()                         *
 *              : allow loops in readgraph(), readgraph_sg(), readgraph_swg() *
+*       19-Dec-24 : add readcoded()                                          *
+*        9-Mar-25 : fixed some 64-bit assumptions                            *
+*                   setsize() and setinter() became long long                *
 *                                                                            *
 *****************************************************************************/
 
 #define ONE_WORD_SETS
-#include "naututil.h"    /* which includes nauty.h, nautinv.h and stdio.h */
-#include "nausparse.h"
+#include "gtools.h"
+#include "naututil.h" 
 
 #if  MAXM==1
 #define M 1
@@ -137,11 +139,12 @@ static const long fuzz2[] = {2001381726L,1615243355L, 191176436L,1212176501L};
 *                                                                            *
 *****************************************************************************/
 
-int
+long long
 setinter(set *set1, set *set2, int m)
 {
     setword x;
-    int count,i;
+    long long count;
+    int i;
 
     count = 0;
     for (i = m; --i >= 0;)
@@ -160,10 +163,11 @@ setinter(set *set1, set *set2, int m)
 *                                                                            *
 *****************************************************************************/
 
-int
+long long
 setsize(set *set1, int m)
 {
-    int count,i;
+    int i;
+    long long count;
 
     if (m == 1) return POPCOUNT(*set1);
 
@@ -1553,7 +1557,7 @@ putquotient(FILE *f, graph *g, int *lab, int *ptn, int level,
         {
             w = workperm[jc];
             gw = GRAPHROW(g,w,m);
-            k = setinter(gw,workset,M);
+            k = (int)setinter(gw,workset,M);
             if (k == 0 || k == csize)
             {
                 if (linelength > 0 && curlen + 2 > linelength)
@@ -1607,9 +1611,9 @@ putquotient_sg(FILE *f, sparsegraph *g, int *lab, int *ptn,
     size_t *vv,j;
 
     n = g->nv;
-    m = SETWORDSNEEDED(n);
     SG_VDE(g,vv,dd,ee);
 
+    m = SETWORDSNEEDED(n);
 #if !MAXN
     DYNALLOC1(int,workperm,workperm_sz,n+2,"putquotient");
     DYNALLOC1(set,workset,workset_sz,m,"putquotient");
@@ -2290,10 +2294,10 @@ ranperm(int *perm, int n)
 void
 relabel(graph *g, int *lab, int *perm, graph *workg, int m, int n)
 {
-    long li;
+    size_t si;
     int i;
 
-    for (li = (long)M * (long)n; --li >= 0;) workg[li] = g[li];
+    for (si = 0; si < M*(size_t)n; ++si) workg[si] = g[si];
 
     updatecan(workg,g,perm,0,M,n);
     if (lab != NULL)
@@ -2357,16 +2361,18 @@ relabel_sg(sparsegraph *sg, int *lab, int *perm, sparsegraph *workg)
 void
 sublabel(graph *g, int *perm, int nperm, graph *workg, int m, int n)
 {
-    long li;
+    size_t li,mn;
     int i,j,k;
     int newm;
     set *gi,*wgi;
 
-    for (li = (long)m * (long)n; --li >= 0;) workg[li] = g[li];
+    mn = (size_t)m * (size_t)n;
+    for (li = 0; li < mn; ++li) workg[li] = g[li];
 
     newm = SETWORDSNEEDED(nperm);
 
-    for (li = (long)newm * (long)nperm; --li >= 0;) g[li] = 0;
+    mn = (size_t)newm * (size_t)nperm;
+    for (li = 0; li < mn; ++li) g[li] = 0;
 
     for (i = 0, gi = (set*)g; i < nperm; ++i, gi += newm)
     {
@@ -2406,7 +2412,7 @@ countcells(int *ptn, int level, int n)
 *                                                                            *
 *****************************************************************************/
 
-#define DEB(str,x) fprintf(stderr,"%s=%d\n",str,x);
+#define DEB(str,x) fprintf(ERRFILE,"%s=%d\n",str,x);
 
 int
 subpartition(int *lab, int *ptn, int n, int *perm, int nperm)
@@ -3029,7 +3035,7 @@ putdegs(FILE *f, graph *g, int linelength, int m, int n)
 #endif
 
     for (i = 0, gp = g; i < n; ++i, gp += M)
-        workperm[i] = setsize(gp,m);
+        workperm[i] = (int)setsize(gp,m);
 
     putsequence(f,workperm,linelength,n);
 }
@@ -3053,7 +3059,7 @@ putdegseq(FILE *f, graph *g, int linelength, int m, int n)
 #endif
 
     for (i = 0, gp = g; i < n; ++i, gp += M)
-        workperm[i] = setsize(gp,m);
+        workperm[i] = (int)setsize(gp,m);
 
     sort1int(workperm,n);
     putnumbers(f,workperm,linelength,n);
@@ -3189,6 +3195,189 @@ numloops_sg(sparsegraph *sg)
             if (*ei == i) ++nl;
     }
     return nl;
+}
+
+/*****************************************************************************
+*                                                                            *
+*  dread_getline(f, prompt)                                                  *
+*  Read input until ']'. Spaces are skipped before '<' and at the end.       *
+*  Return dynamically allocated string terminated by \n\0.                   *
+*                                                                            *
+*****************************************************************************/
+
+static char*
+dread_getline(FILE *f, boolean prompt)
+{
+    char *s;
+    size_t sz,i;
+    int c;
+    boolean less;
+
+    if ((s = ALLOCS(1,500)) == NULL)
+        gt_abort(">E dread_getline() cannot allocate memory\n");
+    sz = 500;
+    
+    FLOCKFILE(f);
+    less = FALSE;
+    i = 0;
+    c = '\0';
+    while ((c = GETC(f)) != EOF && c != ')')
+    {
+        if (c == '\t') continue;
+        if (c == '\n')
+        {
+            if (prompt) fprintf(PROMPTFILE,") ");
+            continue;
+        }
+        if (c == ' ' && !less) continue;
+
+        if (i == sz - 4)
+        {
+            if ((s = REALLOCS(s,sz+10000)) == NULL)
+                gt_abort(">E dread_getline() cannot allocate memory\n");
+            sz += 10000;
+        }
+        if (c == '<') less = TRUE;
+        s[i++] = (char)c;
+    }
+    FUNLOCKFILE(f);
+
+    if (c == EOF)
+        gt_abort(">E dread_getline() premature EOF\n");
+
+    while (i > 0 && s[i-1] == ' ') --i;
+    s[i++] = '\n';
+    s[i++] = '\0';
+
+    return s;
+}
+
+/*****************************************************************************
+*                                                                            *
+* readcoded(FILE *f, boolean prompt, boolean sparse, graph **g,              *
+*            sparsegraph *sg, boolean *digraph, int *n)                      *
+* Read a )-terminated string from f with optional prompting.                 *
+* If it starts with '<', interpret as 'filename' or 'filename#index' and     *
+*  read one graph from the file (first graph is index=1).                    *
+* Otherwise, interpret it as graph6, sparse6 or digraph6.                    *
+* sparse determines whether a newly-allocated graph is returned, or a        *
+*  sparse graph in *sp (which must be initialised).                          *
+* The "cmd:" syntax of opengraphfile() is also supported.                    *
+* Return success (serious problems are fatal).                               *
+*                                                                            *
+*****************************************************************************/
+
+boolean
+readcoded(FILE *f, boolean prompt, boolean sparse, graph **g,
+          sparsegraph *sg, boolean *digraph, int *n)
+{
+    char *s,*p;
+    int m,nn,gtype,loops;
+    char *filename;
+    long index;
+    FILE *ff;
+
+    s = dread_getline(f,prompt);
+ 
+    if (s[0] == '<')
+    {
+        filename = s + 1;
+        while (*filename == ' ') ++filename;
+        for (p = filename; *p != '#' && *p != '\n'; ++p) {}
+        if (*p == '\n')
+        {
+            index = 1;
+            *p = '\0';
+        }
+        else
+        {
+            index = 0;
+            *p = '\0';
+            for (++p; *p >= '0' && *p <= '9'; ++p) 
+                index = 10 * index + (*p - '0');
+            if (*p != '\n')
+            {
+                fprintf(ERRFILE,"readcoded() : bad graph index\n");
+                FREES(s);
+                return FALSE;
+            }
+            if (index == 0) index = 1;
+        }
+        ff = opengraphfile(filename,&gtype,FALSE,index);
+        FREES(s);
+        if (ff == NULL) return FALSE;
+
+        if ((sparse && read_sgg_loops(ff,sg,&loops,digraph) == NULL)
+         || (!sparse && ((*g = readgg(ff,NULL,0,&m,&nn,digraph)) == NULL)))
+        {
+            fprintf(ERRFILE,"readcoded() : no such graph\n");
+            return FALSE;
+        }
+        if (sparse) *n = sg->nv;
+        else        *n = nn;
+
+#if HAVE_POPEN
+        if (is_pipe)
+            pclose(ff);
+        else
+#endif
+        fclose(ff);
+
+        return TRUE;
+    }
+
+    if (s[0] == ':')
+    {
+        *digraph = FALSE;
+        gtype = SPARSE6;
+        p = s + 1;
+    }
+    else if (s[0] == '&')
+    {
+        *digraph = TRUE;
+        gtype = DIGRAPH6;
+        p = s + 1;
+    }
+    else
+    {
+        *digraph = FALSE;
+        gtype = GRAPH6;
+        p = s;
+    }
+
+    while (*p >= BIAS6 && *p <= MAXBYTE) ++p;
+    if (*p != '\n')
+    {
+        fprintf(ERRFILE,">W Illegal coded graph\n");
+        FREES(s);
+        return FALSE;
+    }
+
+    nn = graphsize(s);
+    if ((gtype == GRAPH6 && p - s != G6LEN(nn)) ||
+        (gtype == DIGRAPH6 && p - s != D6LEN(nn)))
+    {
+        fprintf(ERRFILE,">W Illegal coded graph\n");
+        FREES(s);
+        return FALSE;
+    }
+
+    m = SETWORDSNEEDED(nn);
+
+    if (sparse)
+        stringtosparsegraph(s,sg,&loops);
+    else 
+    {
+        m = SETWORDSNEEDED(nn);
+        if ((*g = ALLOCS(m*sizeof(graph),nn)) == NULL)
+            gt_abort(">E readcoded() can't allocate memory\n");
+        stringtograph(s,*g,m);
+    }
+
+    *n = nn;
+
+    FREES(s);
+    return TRUE;
 }
 
 /*****************************************************************************

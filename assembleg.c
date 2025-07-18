@@ -318,6 +318,7 @@ main(int argc, char *argv[])
     if (!infile) exit(1);
     if (!infilename) infilename = "stdin";
 
+    outfile = NULL;
     if (!nooutput)
     {
         if (!outfilename || outfilename[0] == '-')

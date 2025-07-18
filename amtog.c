@@ -42,7 +42,7 @@ main(int argc, char *argv[])
 {
     int m,n,outdigit;
     int argnum,i,j,outcode,val;
-    int unsym0,unsym1,loop0;
+    int unsym0=0,unsym1=0,loop0;
     char *arg,sw,ochar;
     boolean badargs;
     boolean nswitch,sswitch,gswitch,hswitch,qswitch;

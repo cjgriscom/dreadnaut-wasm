@@ -131,7 +131,6 @@ INSTRUMENT feature.
 **************************************************************************
 
     Author:   B. D. McKay, Oct 1994.     brendan.mckay@anu.edu.au
-              Copyright  B. McKay (1994-2017).  All rights reserved.
               This software is subject to the conditions and waivers
               detailed in the file COPYRIGHT.
     1 May 2003 : fixed PRUNE feature
@@ -164,18 +163,18 @@ INSTRUMENT feature.
 
 static void (*outproc)(FILE*,graph*,int,int);
 #ifdef OUTPROC
-extern void OUTPROC(FILE*,graph*,int,int);
+void OUTPROC(FILE*,graph*,int,int);
 #endif
 
 #ifdef SUMMARY
-extern void SUMMARY(nauty_counter,double);
+void SUMMARY(nauty_counter,double);
 #endif
 
 #ifdef PRUNE1
-extern int PRUNE1(graph*,int*,int,int,int);
+int PRUNE1(graph*,int*,int,int,int);
 #endif
 #ifdef PRUNE2
-extern int PRUNE2(graph*,int*,int,int,int);
+int PRUNE2(graph*,int*,int,int,int);
 #endif
 
 static FILE *outfile;           /* file for output graphs */
@@ -1200,7 +1199,7 @@ genextend(graph *g, int n2, int *deg, int ne, boolean rigid, int xlb, int xub)
     graph gx[MAXN];
     int degx[MAXN];
     boolean rigidx;
-    int dneed,need,nfeet,hideg,deg1,ft[MAXN],nfrag,frag[MAXN];
+    int dneed,need,nfeet=0,hideg,deg1,ft[MAXN],nfrag=0,frag[MAXN];
 
 #ifdef INSTRUMENT
     boolean haschild;
@@ -1425,7 +1424,10 @@ main(int argc, char *argv[])
     HELP; PUTVERSION;
     nauty_check(WORDSIZE,1,MAXN,NAUTYVERSIONID);
 
-    if (MAXN > WORDSIZE || MAXN1 > 8*sizeof(int)-2)
+#if MAXN > WORDSIZE
+    gt_abort(">E genbg: MAXN is larger than WORDSIZE\n");
+#endif
+    if (MAXN1 > 8*sizeof(int)-2)
     {
         fprintf(stderr,"genbg: incompatible MAXN, MAXN1 or WORDSIZE\n");
         fprintf(stderr,"--See notes in program source\n");

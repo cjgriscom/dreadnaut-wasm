@@ -14,18 +14,18 @@
     -v : For each graph, report the size to stderr\n\
     -q : Suppress summary\n\
 \n\
-    If defined, the digraph version is shown in parentheses:\n\
-    -p#   : path (directed path) on n vertices\n\
-    -c#   : cycle (directed cycle) on n vertices\n\
-    -e#   : empty graph (digraph with loops only) on n vertices\n\
-    -k#   : complete graph (with loops) on n vertices\n\
-    -b#,#[,#] : complete bipartite graph (directed l->r) on n vertices\n\
+    If defined, the digraph version is shown in <angle brackets>:\n\
+    -p#   : path <directed path> on n vertices\n\
+    -c#   : cycle <directed cycle> on n vertices\n\
+    -e#   : empty graph <digraph with loops only> on n vertices\n\
+    -k#   : complete graph <with loops> on n vertices\n\
+    -b#,#[,#] : complete bipartite graph <directed l->r> on n vertices\n\
                    minus a matching of given size if present\n\
     -m#,#... : multipartite graph\n\
-    -a#   : antiprism (directed antiprism) on 2n\n\
-    -l#   : moebius ladder (directed cycle, undirected rungs) with # vertices\n\
-    -D#,# : de Bruijn graph (digraph). D(m,t) has order m^t\n\
-    -w#   : wheel with # spokes (directed out from hub)\n\
+    -a#   : antiprism <directed antiprism> on 2n\n\
+    -l#   : moebius ladder <directed cycle, undirected rungs> with # vertices\n\
+    -D#,# : de Bruijn graph <digraph>. D(m,t) has order m^t\n\
+    -w#   : wheel with # spokes <directed out from hub>\n\
     -f#   : flower snark on 4n vertices\n\
     -L#   : triangular graph, the linegraph of K_n\n\
     -P#,# : generalized Petersen graph; usual one is -P5,2\n\
@@ -35,9 +35,9 @@
     -J#,# : Johnson graph J(n,k), args are n and k\n\
     -K#,# -K#,#,# : Generalized Kneser graph. K(n,k,t) is graph of k-subsets\n\
             of an n-set whose intersection is t. Default for t is 0.\n\
-    -C#,#... : circulant (di)graph; first arg is the number of vertices\n\
-    -T#,#... : theta (di)graph Theta(#,#,...), give path lengths\n\
-    -G#,#... : (directed) grid, use negative values for open directions\n\
+    -C#,#... : circulant <di>graph; first arg is the number of vertices\n\
+    -T#,#... : theta <di>graph Theta(#,#,...), give path lengths\n\
+    -G#,#... : <directed> grid, use negative values for open directions\n\
     -Y#   : Paley graph or digraph, depending on size. Nondeterministic.\n\
     -X# : produce a named graph, # can be an index or a partial name.\n\
           Use genspecialg --Xhelp for a list.\n\
@@ -1622,7 +1622,8 @@ main(int argc, char *argv[])
     if (argc > 1 && (strcmp(argv[1],"-Xhelp") == 0 
                            || strcmp(argv[1],"--Xhelp") == 0))
     { 
-        printf("%s%s%s",SPECIALHELP1,SPECIALHELP2,SPECIALHELP3);
+        printf("%s%s%s%s",
+                SPECIALHELP1,SPECIALHELP2,SPECIALHELP3,SPECIALHELP4);
         return 0;
     }
 

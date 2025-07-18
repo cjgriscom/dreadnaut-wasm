@@ -1,4 +1,4 @@
-/* addedgeg.c   nauty version 2.6; B D McKay, Jan 2013. */
+/* addedgeg.c   version 2.6; B D McKay, Jan 2013. */
 
 #define USAGE "addedgeg [-lq] [-D#] [-btfF] [-z#] [infile [outfile]]"
 
@@ -86,6 +86,7 @@ main(int argc, char *argv[])
     int i,j,m,n,v,w,argnum;
     int codetype,outcode;
     graph *g,*gq;
+    boolean digraph;
     nauty_counter nin,nout;
     char *arg,sw;
     setword *gv,*gw;
@@ -170,6 +171,7 @@ main(int argc, char *argv[])
     infile = opengraphfile(infilename,&codetype,FALSE,1);
     if (!infile) exit(1);
     if (!infilename) infilename = "stdin";
+    NODIGRAPHSYET(codetype);
 
     if (!outfilename || outfilename[0] == '-')
     {
@@ -196,7 +198,7 @@ main(int argc, char *argv[])
     t = CPUTIME;
     while (TRUE)
     {
-        if ((g = readg(infile,NULL,0,&m,&n)) == NULL) break;
+        if ((g = readgg(infile,NULL,0,&m,&n,&digraph)) == NULL) break;
         ++nin;
 
 #if !MAXN

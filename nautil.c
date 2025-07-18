@@ -1,9 +1,8 @@
 /*****************************************************************************
 *                                                                            *
-*  Auxiliary source file for version 2.8 of nauty.                           *
+*  Auxiliary source file for version 2.9 of nauty.                           *
 *                                                                            *
-*   Copyright (1984-2020) Brendan McKay.  All rights reserved.               *
-*   Subject to waivers and disclaimers in nauty.h.                           *
+*   Subject to the conditions and dislaimers in the file COPYRIGHT.          *
 *                                                                            *
 *   CHANGE HISTORY                                                           *
 *       10-Nov-87 : final changes for version 1.2                            *
@@ -59,6 +58,7 @@
 *       18-Jan-12 : changes for version 2.6 :                                *
 *                 - declare nauty_kill_request                               *
 *        8-May-20 : add const declarations to prototypes                     *
+*       22-Jan-25 : moved the noreturn attribute on alloc_error()            *
 *                                                                            *
 *****************************************************************************/
 
@@ -728,7 +728,7 @@ nautil_check(int wordsize, int m, int n, int version)
 *                                                                            *
 *****************************************************************************/
 
-void NORET_ATTR
+NORET_ATTR void
 alloc_error(const char *s)
 {
     fprintf(ERRFILE,"Dynamic allocation failed: %s\n",s);

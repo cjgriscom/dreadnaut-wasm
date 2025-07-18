@@ -53,6 +53,8 @@ October 10, 2011: corrected error caused by overflow of 32bit int used as hashva
 Sep, 2012: PROCESS feature added by BDM.
 
 Oct, 2017: digraph6 output added by BDM.
+
+Jan, 2025: stack space reduced by making the largest local variables static
 */
 
 /* PROCESS feature
@@ -80,11 +82,11 @@ Oct, 2017: digraph6 output added by BDM.
 #include <string.h>
 
 #ifdef PROCESS
-extern void PROCESS(FILE*,graph*,int);
+void PROCESS(FILE*,graph*,int);
 nauty_counter dg_nin,dg_nout;
 #endif
 #ifdef SUMMARY
-extern void SUMMARY(void);
+void SUMMARY(void);
 #endif
 
 #define MAX_BOGEN ((MAXN*(MAXN-1))/2)
@@ -393,7 +395,8 @@ void writelist(int list[])
 {
   int i;
 
-  for (i=0;list[i]>=0;i++) fprintf(stderr,"%d ",list[i]); fprintf(stderr,"\n");
+  for (i=0;list[i]>=0;i++) fprintf(stderr,"%d ",list[i]);
+  fprintf(stderr,"\n");
 }
 
  void writegraph(graph *g)
@@ -2265,14 +2268,13 @@ void direct_all_nontriv()
 
 {
   int i,best_orbit[MAXN+1];
-  int num_in_orbit[MAXN];
   graph touched;
 
   addnumber=1;
   memcpy(rememberorbits[0],orbits,sizeof(int)*aantal_toppen);
 
   all= (graph)0;
-  for (i=0;i<aantal_toppen;i++) { num_in_orbit[i]=0; ADDELEMENT(&all,i); }
+  for (i=0;i<aantal_toppen;i++) { ADDELEMENT(&all,i); }
 
   touched= (graph)0;
   chooseorbit(&touched, best_orbit, 0);
@@ -2554,7 +2556,8 @@ void mark_orbitnumbers_edgelist(int number[], int *specialexists)
 
 { int i, j, good_special,pos2;
   BOOG boog; 
-  int graaf[MAX_BOGEN][MAXN], adj[MAX_BOGEN];
+  int graaf[MAX_BOGEN][MAXN];
+  int adj[MAX_BOGEN];
 
   for (i=0; i<aantal_bogen; i++) { adj[i]=0; }
 
@@ -2589,7 +2592,8 @@ void mark_orbitnumbers_edgelist_first(int number[], int *specialexists, int *com
      */
 { int i, j, good_special,edge_fixed, pos2;
   BOOG boog; 
-  int graaf[MAX_BOGEN][MAXN], adj[MAX_BOGEN];
+  int graaf[MAX_BOGEN][MAXN];
+  int adj[MAX_BOGEN];
 
   *completelyfixededge = -1;
 
@@ -2628,7 +2632,7 @@ void mark_orbitnumbers(int number[], BOOG list_of_dir_edges[], int listlength)
 
 { int i, j, pos2;
   BOOG boog; 
-  int positie[2*MAX_BOGEN][2*MAX_BOGEN];
+  static int positie[2*MAX_BOGEN][2*MAX_BOGEN];
   int graaf[MAX_BOGEN][MAXN], adj[MAX_BOGEN];
 
   for (i=0; i<listlength; i++) 
@@ -2655,7 +2659,7 @@ void mark_orbitnumbers_only_directed(int number[], BOOG list_of_edges[], int lis
 
 { int i, j,a,b,pos2;
   BOOG boog; 
-  int positie[2*MAX_BOGEN][2*MAX_BOGEN];
+  static int positie[2*MAX_BOGEN][2*MAX_BOGEN];
   int graaf[MAX_BOGEN][MAXN], adj[MAX_BOGEN];
 
   for (i=0; i<listlength; i++)
@@ -2690,7 +2694,7 @@ void mark_orbitnumbers_only_candidates(int number[], BOOG list_of_edges[], int l
 
 { int i, j,a,b,pos2;
   BOOG boog; 
-  int positie[2*MAX_BOGEN][2*MAX_BOGEN];
+  static int positie[2*MAX_BOGEN][2*MAX_BOGEN];
   int graaf[MAX_BOGEN][MAXN], adj[MAX_BOGEN];
 
   for (i=0; i<listlength; i++)
@@ -4040,7 +4044,7 @@ int main(int argc, char *argv[])
   unsigned char *code=NULL;
   int codelaenge;
   int multicode=0, g6code=1;
-  long long int last=0LL;
+  // long long int last=0LL;    BDM
 
   if (sizeof(long long int)<8) 
     { 
@@ -4095,7 +4099,7 @@ int main(int argc, char *argv[])
 
       // direct_edges(staticg, aantal_toppen);
       direct_edges();   // BDM
-      last=aantal_gerichte_grafen;
+      // last=aantal_gerichte_grafen;   BDM
 
 
 

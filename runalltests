@@ -25,7 +25,7 @@ out1=`mktemp runtest.XXXXXX`
 out2=`mktemp runtest.XXXXXX`
 
 eval $cmd <"$in" 2>$out2 >$out1
-LC_COLLATE=C sort $out2 >>$out1
+LC_ALL=C sort $out2 >>$out1
 if ./naucompare "$out1" "$ok" ; then
    rm $out1 $out2
 else
@@ -95,6 +95,25 @@ runonetest "./dreadtest4K -o As" nautest2.dre nautest2b.ans
 runonetestQ ./dreadtestQ1 nautest2.dre nautest2a.ans
 runonetestQ "./dreadtestQ1 -o As" nautest2.dre nautest2b.ans
 
+runonetest ./dreadtest nautest3.dre nautest3a.ans
+runonetest "./dreadtest -o As" nautest3.dre nautest3b.ans
+runonetest "./dreadtest -o At" nautest3.dre nautest3c.ans
+runonetest ./dreadtestS nautest3.dre nautest3a.ans
+runonetest "./dreadtestS -o As" nautest3.dre nautest3b.ans
+runonetest ./dreadtestW nautest3.dre nautest3a.ans
+runonetest "./dreadtestW -o As" nautest3.dre nautest3b.ans
+runonetest "./dreadtestW -o At" nautest3.dre nautest3c.ans
+runonetest ./dreadtestL nautest3.dre nautest3a.ans
+runonetest "./dreadtestL -o As" nautest3.dre nautest3b.ans
+runonetest "./dreadtestL -o At" nautest3.dre nautest3c.ans
+runonetestQ ./dreadtestQ nautest3.dre nautest3a.ans
+runonetestQ "./dreadtestQ -o As" nautest3.dre nautest3b.ans
+runonetestQ "./dreadtestQ -o At" nautest3.dre nautest3c.ans
+runonetest ./dreadtest4K nautest3.dre nautest3a.ans
+runonetest "./dreadtest4K -o As" nautest3.dre nautest3b.ans
+runonetestQ ./dreadtestQ1 nautest3.dre nautest3a.ans
+runonetestQ "./dreadtestQ1 -o As" nautest3.dre nautest3b.ans
+
 runonetest "./geng -ud1D7t 11" "" nautesta.ans
 runonetest "./geng -cd1f 10 | ./labelg -q" "" nautestb1.ans
 runonetest "./geng -cd1f 10 | ./labelg -qS" "" nautestb2.ans
@@ -116,12 +135,23 @@ runonetest "./genspecialg -Q4 -q | ./addedgeg -tq | ./deledgeg -qv10" "" nautest
 runonetest "./genktreeg -k3 -q 11 | ./complg -q" "" nautestq.ans
 runonetest "./geng -qd5 10 | ./countg --dkk" "" nautestr.ans
 runonetest "./geng -q -D4 9 | ./ranlabg -q | ./shortg -q" "" nautests.ans
-runonetest "./geng -q -T 10 | ./countg --N" "" nautestt.ans
+runonetest "./geng -q -T 10 | ./countg --N:HH" "" nautestt.ans
 runonetest "./geng -q -TD6 10 | ./countg --NN,A" "" nautestu.ans
 runonetest "./geng -q -TD6 10 | ./ransubg -qS765 -P9/10 | ./countg --NN,A,G,GG" "" nautestv.ans
 runonetest "./genrang -q -P3 -S1234 70 1000 | ./countg --G,GG" "" nautestw.ans
 runonetest "./genrang -q -P4 -z -S1234 70 500 | ./countg --G,GG" "" nautestx.ans
-runonetest "./geng -q -bT 12 | ./ranlabg -qS7654 -m5 | uniqg -u" "" nautesty.ans
+runonetest "./geng -q -bT 12 | ./ranlabg -qS7654 -m5 | ./uniqg -uy" "" nautesty.ans
+runonetest "./geng -qc -f 11 | ./delptg -qk2 | ./countg --nde" "" nautestz.ans
+runonetest "./geng -Pd3D5q 9 | ./nbrhoodg -q | ./newedgeg -q" "" nautestaa.ans
+runonetest "./genbg -qFz 5 5 | ./ancestorg -q | ./listg -A" "" nautestbb.ans
+runonetest "./genbg -qY1 5 6 | ./linegraphg -q | ./countneg" "" nautestcc.ans
+runonetest "./genbg -qA 6 6 | ./addptg -qj1 | ./countg --WW,HH,P" "" nautestdd.ans
+runonetest "./genbg -qz 6 5 | ./subdivideg -qk2 | ./countg --dmDM" "" nautestee.ans
+runonetest "./geng -Cq 8 12 | ./watercluster2 S Z | ./underlyingg -q | ./countg --ee,cc,zZ" "" nautestff.ans
+runonetest "./geng -qd3D4 8 | ./multig -qTm2" "" nautestgg.ans
+runonetest "./geng -qtfc 9 | ./planarg -q | ./pickg -qp1:2 | ./productg -c" "" nautesthh.ans
+runonetest "./genspecialg -q -X12 -X44 -X23 -X68 -X100 | ./distgraphg -qd3 | ./uniqg -uy" "" nautestii.ans
+# Make sure to use ./ for all local binaries
 
 echo " "
 

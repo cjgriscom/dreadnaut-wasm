@@ -22,13 +22,14 @@
     -c  : write ascii form with minimal line-breaks\n\
     -e  : write a list of edges, preceded by the order and the\n\
           number of edges\n\
-    -H  : write in HCP operations research format\n\
     -M  : write in Magma format\n\
     -m  : write in Mathematica format\n\
     -W  : write matrix in Maple format\n\
+    -H  : write in HCP operations research format\n\
+    -T  : write in the edge-list format needed by the program tutte\n\
     -L  : (only with -M or -W) write Laplacian rather than adjacency matrix\n\
     -S  : (only with -M or -W) write signless Laplacian not adjacency matrix\n\
-    -b  : write in Bliss format\n\
+    -b  : write in DIMACS format\n\
     -G  : write in GRAPE format\n\
     -y  : write in dot file format\n\
     -Yxxx : extra dotty commands for dot files (arg continues to end of param)\n\
@@ -189,6 +190,32 @@ putedges(FILE *f, graph *g, boolean ptn, int linelength,
     fprintf(f,"\n");
 }
 
+
+/***************************************************************************/
+
+static void
+puttutte(FILE *f, graph *g, boolean digraph, int m, int n)
+/* Write one line in format required by the program 'tutte' */
+{
+    graph *gi;
+    int i,j;
+    boolean first;
+
+    first = TRUE;
+    for (i = 0, gi = g; i < n; ++i, gi += m)
+    {
+        if (digraph) j = -1; else j = i;
+        while ((j = nextelement(gi,m,j)) >= 0)
+        {
+            if (!first) fprintf(f,",%d--%d",i,j);
+            else        fprintf(f,"%d--%d",i,j);
+            first = FALSE;
+        }
+    }
+
+    fprintf(f,"\n");
+}
+
 /***************************************************************************/
 
 static void
@@ -329,7 +356,7 @@ putdotty(FILE *f, graph *g, unsigned long id, char *extras, int m, int n)
 
 static void
 putbliss(FILE *f, unsigned long id, boolean qswitch, graph *g, int m, int n)
-/* Write the graph in Bliss format, according to
+/* Write the graph in DIMACS format, according to
  *      http://www.tcs.hut.fi/Software/bliss/fileformat.shtml */
 {
     unsigned long ne;
@@ -560,18 +587,18 @@ main(int argc, char *argv[])
     boolean badargs,first,digraph;
     unsigned long maxin;
     long pval1,pval2;
-    boolean fswitch,pswitch,cswitch,dswitch;
+    boolean fswitch,pswitch,cswitch,dswitch,Tswitch;
     boolean aswitch,lswitch,oswitch,Fswitch,Sswitch;
     boolean Aswitch,eswitch,tswitch,mswitch,qswitch;
     boolean sswitch,Mswitch,Wswitch,Lswitch,Eswitch;
     boolean bswitch,Gswitch,yswitch,Yswitch,Hswitch;
     int linelength;
-    char *infilename,*outfilename,*yarg;
+    char *infilename,*outfilename,*yarg=NULL;
 
     HELP; PUTVERSION;
 
     fswitch = pswitch = cswitch = dswitch = mswitch = FALSE;
-    aswitch = lswitch = oswitch = Fswitch = FALSE;
+    aswitch = lswitch = oswitch = Fswitch = Tswitch = FALSE;
     Aswitch = eswitch = tswitch = qswitch = Sswitch = FALSE;
     sswitch = Mswitch = Wswitch = Lswitch = Eswitch = FALSE;
     bswitch = Gswitch = yswitch = Yswitch = Hswitch = FALSE;
@@ -610,6 +637,7 @@ main(int argc, char *argv[])
                 else SWBOOLEAN('S',Sswitch)
                 else SWBOOLEAN('s',sswitch)
                 else SWBOOLEAN('y',yswitch)
+                else SWBOOLEAN('T',Tswitch)
                 else SWRANGE('p',":-",pswitch,pval1,pval2,"listg -p")
                 else SWINT('l',lswitch,linelength,"listg -l")
                 else SWINT('o',oswitch,labelorg,"listg -o")
@@ -737,6 +765,8 @@ main(int argc, char *argv[])
             putdotty(outfile,g,pval1+nin-1,(Yswitch?yarg:NULL),m,n);
         else if (Hswitch)
             putHCP(outfile,g,m,n);
+        else if (Tswitch)
+            puttutte(outfile,g,digraph,m,n);
         else
         {
             if (qswitch)

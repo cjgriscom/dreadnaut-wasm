@@ -1,5 +1,5 @@
 /*****************************************************************************
-* This is the header file for versions 2.8 of naututil.c and dreadnaut.c.    *
+* This is the header file for version @PACKAGE_VERSION@ of naututil.c.       *
 * @configure_input@
 *****************************************************************************/
 
@@ -18,6 +18,7 @@ used, it is necessary to check they are correct.
 #define HAVE_TIME  @have_time@      /* if time() is available */
 #define HAVE_GETRUSAGE @have_getrusage@  /* if getrusage() is available */
 #define HAVE_GETTIMEOFDAY  @have_gettimeofday@  /* if gettimeofday() */
+#define GETTIMEOFDAY_DECL  @gettimeofday_dec@  /* gettimeofday() declared */
 #define HAVE_CLOCK_GETTIME  @have_clock_gettime@  /* if clock_gettime() */
 #define HAVE_CLOCK  @have_clock@  /* if clock() is available */
 
@@ -25,8 +26,8 @@ used, it is necessary to check they are correct.
 
 /*****************************************************************************
 *                                                                            *
-*   Copyright (1984-2022) Brendan McKay.  All rights reserved.               *
-*   Subject to the waivers and disclaimers in nauty.h.                       *
+*   Copyright (1984-) Brendan McKay.                                         *
+*   Subject to the conditions and disclaimers in the file COPYRIGHT.         *
 *                                                                            *
 *   CHANGE HISTORY                                                           *
 *       10-Nov-87 : final changes for version 1.2                            *
@@ -118,6 +119,7 @@ used, it is necessary to check they are correct.
 *       27-Aug-16 : added REALTIMEDEFS and NAUTYREALTIME                     *
 *       14-Oct-22 : prototypes for settolist() and listtoset()               *
 *        8-Apr-24 : prototypes for numloops() and numloops_sg()              *
+*        9-Mar-25 : changed type of setsize() and setinter()                 *
 *                                                                            *
 * @edit_msg@
 *                                                                            *
@@ -134,68 +136,70 @@ used, it is necessary to check they are correct.
 extern "C" {
 #endif
 
-extern void complement(graph*,int,int);
-extern void converse(graph*,int,int);
-extern void converse_sg(sparsegraph*, sparsegraph*);
-extern void copycomment(FILE*,FILE*,int);
-extern void complement_sg(sparsegraph*, sparsegraph*);
-extern int countcells(int*,int,int);
-extern void flushline(FILE*);
-extern void fixit(int*,int*,int*,int,int);
-extern int getint(FILE*);
-extern int getint_sl(FILE*);
-extern long hash(set*,long,int);
-extern long hashgraph(graph*,int,int,long);
-extern long hashgraph_sg(sparsegraph*,long);
-extern void individualise(int*,int*,int,int,int*,int*,int);
-extern long listhash(int*,int,long);
-extern void listtoset(int*,int,set*,int);
-extern void mathon(graph*,int,int,graph*,int,int);
-extern void mathon_sg(sparsegraph*,sparsegraph*);
-extern void naututil_check(int,int,int,int);
-extern void naututil_freedyn(void);
-extern int numloops(graph*,int,int);
-extern int numloops_sg(sparsegraph*);
-extern void putcanon(FILE*,int*,graph*,int,int,int);
-extern void putcanon_sg(FILE*,int*,sparsegraph*,int);
-extern void putdegs(FILE*,graph*,int,int,int);
-extern void putdegs_sg(FILE*,sparsegraph*,int);
-extern void putdegseq(FILE*,graph*,int,int,int);
-extern void putdegseq_sg(FILE*,sparsegraph*,int);
-extern void putgraph(FILE*,graph*,int,int,int);
-extern void putgraph_sg(FILE*,sparsegraph*,int);
-extern void putmapping(FILE*,int*,int,int*,int,int,int);
-extern void putorbits(FILE*,int*,int,int);
-extern void putorbitsplus(FILE*,int*,int,int);
-extern void putptn(FILE*,int*,int*,int,int,int);
-extern void putquotient(FILE*,graph*,int*,int*,int,int,int,int);
-extern void putquotient_sg(FILE*,sparsegraph*,int*,int*,int,int);
-extern void putset(FILE*,set*,int*,int,int,boolean);
-extern void putset_firstbold(FILE*,set*,int*,int,int,boolean);
-extern void rangraph(graph*,boolean,int,int,int);
-extern void rangraph2(graph*,boolean,int,int,int,int);
-extern void rangraph2_sg(sparsegraph*,boolean,int,int,int);
-extern void ranreg_sg(sparsegraph *sg, int degree, int n);
-extern void ranperm(int*,int);
-extern void readgraph(FILE*,graph*,boolean,boolean,boolean,int,int,int);
-extern void readgraph_sg(FILE*,sparsegraph*,boolean,boolean,int,int);
-extern void readgraph_swg(FILE*,sparsegraph*,boolean,boolean,int,int);
-extern boolean readinteger(FILE*,int*);
-extern boolean readinteger_sl(FILE*,int*);
-extern void readperm(FILE*,int*,boolean,int);
-extern void readptn(FILE*,int*,int*,int*,boolean,int);
-extern void readvperm(FILE*,int*,boolean,int,int*);
-extern boolean readstring(FILE*,char*,int);
-extern void relabel(graph*,int*,int*,graph*,int,int);
-extern void relabel_sg(sparsegraph*,int*,int*,sparsegraph*);
-extern long sethash(set*,int,long,int);
-extern int setinter(set*,set*,int);
-extern int setsize(set*,int);
-extern int settolist(set *set1, int m, int *list);
-extern void sublabel(graph*,int*,int,graph*,int,int);
-extern void sublabel_sg(sparsegraph*,int*,int,sparsegraph*);
-extern int subpartition(int*,int*,int,int*,int);
-extern void unitptn(int*,int*,int*,int);
+void complement(graph*,int,int);
+void converse(graph*,int,int);
+void converse_sg(sparsegraph*, sparsegraph*);
+void copycomment(FILE*,FILE*,int);
+void complement_sg(sparsegraph*, sparsegraph*);
+int countcells(int*,int,int);
+void flushline(FILE*);
+void fixit(int*,int*,int*,int,int);
+int getint(FILE*);
+int getint_sl(FILE*);
+long hash(set*,long,int);
+long hashgraph(graph*,int,int,long);
+long hashgraph_sg(sparsegraph*,long);
+void individualise(int*,int*,int,int,int*,int*,int);
+long listhash(int*,int,long);
+void listtoset(int*,int,set*,int);
+void mathon(graph*,int,int,graph*,int,int);
+void mathon_sg(sparsegraph*,sparsegraph*);
+void naututil_check(int,int,int,int);
+void naututil_freedyn(void);
+int numloops(graph*,int,int);
+int numloops_sg(sparsegraph*);
+void putcanon(FILE*,int*,graph*,int,int,int);
+void putcanon_sg(FILE*,int*,sparsegraph*,int);
+void putdegs(FILE*,graph*,int,int,int);
+void putdegs_sg(FILE*,sparsegraph*,int);
+void putdegseq(FILE*,graph*,int,int,int);
+void putdegseq_sg(FILE*,sparsegraph*,int);
+void putgraph(FILE*,graph*,int,int,int);
+void putgraph_sg(FILE*,sparsegraph*,int);
+void putmapping(FILE*,int*,int,int*,int,int,int);
+void putorbits(FILE*,int*,int,int);
+void putorbitsplus(FILE*,int*,int,int);
+void putptn(FILE*,int*,int*,int,int,int);
+void putquotient(FILE*,graph*,int*,int*,int,int,int,int);
+void putquotient_sg(FILE*,sparsegraph*,int*,int*,int,int);
+void putset(FILE*,set*,int*,int,int,boolean);
+void putset_firstbold(FILE*,set*,int*,int,int,boolean);
+void rangraph(graph*,boolean,int,int,int);
+void rangraph2(graph*,boolean,int,int,int,int);
+void rangraph2_sg(sparsegraph*,boolean,int,int,int);
+void ranreg_sg(sparsegraph *sg, int degree, int n);
+void ranperm(int*,int);
+boolean readcoded(FILE*,boolean,boolean,graph**,
+                sparsegraph*,boolean*,int*);
+void readgraph(FILE*,graph*,boolean,boolean,boolean,int,int,int);
+void readgraph_sg(FILE*,sparsegraph*,boolean,boolean,int,int);
+void readgraph_swg(FILE*,sparsegraph*,boolean,boolean,int,int);
+boolean readinteger(FILE*,int*);
+boolean readinteger_sl(FILE*,int*);
+void readperm(FILE*,int*,boolean,int);
+void readptn(FILE*,int*,int*,int*,boolean,int);
+void readvperm(FILE*,int*,boolean,int,int*);
+boolean readstring(FILE*,char*,int);
+void relabel(graph*,int*,int*,graph*,int,int);
+void relabel_sg(sparsegraph*,int*,int*,sparsegraph*);
+long sethash(set*,int,long,int);
+long long setinter(set*,set*,int);
+long long setsize(set*,int);
+int settolist(set *set1, int m, int *list);
+void sublabel(graph*,int*,int,graph*,int,int);
+void sublabel_sg(sparsegraph*,int*,int,sparsegraph*);
+int subpartition(int*,int*,int,int*,int);
+void unitptn(int*,int*,int*,int);
 
 #ifdef __cplusplus
 }
@@ -289,6 +293,13 @@ extern void unitptn(int*,int*,int*,int);
 #define CPUTIME 0.0
 #endif
 
+#if HAVE_GETTIMEOFDAY
+#include <sys/time.h>
+#if !GETTIMEOFDAY_DECL
+int gettimeofday(struct timeval *tv, void *tz);
+#endif
+#endif
+
 /*************************************************************************/
 
 /* INITSEED is present for backwards compatibility. For new code,
@@ -296,7 +307,6 @@ extern void unitptn(int*,int*,int*,int);
 
 #ifndef NAUTY_SEED_DEFINED
 #if HAVE_GETTIMEOFDAY
-#include <sys/time.h>
 #define INITSEED \
 {struct timeval nauty_tv; \
  gettimeofday(&nauty_tv,NULL); \
@@ -312,7 +322,6 @@ extern void unitptn(int*,int*,int*,int);
 /*************************************************************************/
 
 #if !defined(NAUTY_REALTIME_DEFINED) && HAVE_GETTIMEOFDAY
-#include <sys/time.h>
 #define REALTIMEDEFS struct timeval nauty_rtv;
 #define NAUTYREALTIME (gettimeofday(&nauty_rtv,NULL), \
    (double)(nauty_rtv.tv_sec + 1e-6*nauty_rtv.tv_usec))

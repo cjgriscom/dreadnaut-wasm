@@ -138,16 +138,17 @@ int errno = 0;
  { if ((name = (type*)realloc(name,(sz)*sizeof(type))) == NULL) \
       alloc_error(msg); else name_sz = (sz);}}
 
-#define alloc_error gt_abort
+#define alloc_error GT_ABORT
+#define GT_ABORT(msg) do { if (msg) fprintf(stderr,"%s\n",msg); exit(1); } while (0)
 
 #ifdef __STDC__
 #include <stddef.h>
 #include <stdlib.h>
 #else
 #include <sys/types.h>
-extern char *calloc();
-extern char *malloc();
-extern char *realloc();
+char *calloc();
+char *malloc();
+char *realloc();
 #endif
 
 #ifdef __alpha
@@ -213,15 +214,6 @@ static int labelorg = 0;
 #endif
 
 static long ogf_linelen;
-
-/************************************************************************/
-
-static void
-gt_abort(char *msg)     /* Write message and halt. */
-{
-    if (msg) fprintf(stderr,"%s",msg);
-    exit(1);
-}
 
 /*****************************************************************************
 *                                                                            *
@@ -349,6 +341,7 @@ opengraphfile(char *filename, int *codetype, int assumefixed, long position)
     long i,l,pos,pos1,pos2;
     boolean bad_header;
 
+    *codetype = 0;
     if (filename == NULL)
         f = stdin;
     else
@@ -559,7 +552,7 @@ stringtograph(char *s, graph *g, int m)
 /* Assumes g is big enough to hold it.   */
 {
     char *p;
-    int n,i,j,k,v,x,nb,need;
+    int n,i,j,k,v,x=0,nb,need;
     size_t ii;
     set *gi,*gj;
     boolean done;
@@ -570,7 +563,7 @@ stringtograph(char *s, graph *g, int m)
     p = s + (s[0] == ':' || s[0] == '&') + SIZELEN(n);
 
     if (TIMESWORDSIZE(m) < n)
-        gt_abort(">E stringtograph: impossible m value\n");
+        GT_ABORT(">E stringtograph: impossible m value");
 
     for (ii = m*(size_t)n; --ii > 0;) g[ii] = 0;
     g[0] = 0;
@@ -707,11 +700,9 @@ readgg(FILE *f, graph *g, int reqm, int *pm, int *pn, boolean *digraph)
 
     if ((s = showg_getline(f)) == NULL) return NULL;
 
+    readg_code = 0;
     if (s[0] == ';')
-    {
-        gt_abort(
-        ">E readgg: sorry but showg doesn't understand incremental format\n");
-    }
+        GT_ABORT(">E readgg: showg doesn't understand incremental format");
     else if (s[0] == ':')
     {
         *digraph = FALSE;
@@ -733,18 +724,18 @@ readgg(FILE *f, graph *g, int reqm, int *pm, int *pn, boolean *digraph)
     while (*p >= BIAS6 && *p <= MAXBYTE) 
         ++p;
     if (*p == '\0')
-        gt_abort(">E readgg: missing newline\n");
+        GT_ABORT(">E readgg: missing newline");
     else if (*p != '\n')
-        gt_abort(">E readgg: illegal character\n");
+        GT_ABORT(">E readgg: illegal character");
 
     n = graphsize(s);
     if (readg_code == GRAPH6 && p - s != G6LEN(n))
-        gt_abort(">E readgg: truncated graph6 line\n");
+        GT_ABORT(">E readgg: truncated graph6 line");
     if (readg_code == DIGRAPH6 && p - s != D6LEN(n))
-        gt_abort(">E readgg: truncated digraph6 line\n");
+        GT_ABORT(">E readgg: truncated digraph6 line");
 
     if (reqm > 0 && TIMESWORDSIZE(reqm) < n)
-        gt_abort(">E readgg: reqm too small\n");
+        GT_ABORT(">E readgg: reqm too small");
     else if (reqm > 0)
         m = reqm;
     else
@@ -753,7 +744,7 @@ readgg(FILE *f, graph *g, int reqm, int *pm, int *pn, boolean *digraph)
     if (g == NULL)
     {
         if ((g = (graph*)ALLOCS(n,m*sizeof(graph))) == NULL)
-            gt_abort(">E readgg: malloc failed\n");
+            GT_ABORT(">E readgg: malloc failed");
     }
 
     *pn = n;
@@ -817,17 +808,18 @@ arg_int(char **ps, int *val, char *id)
     int code;
     long longval;
 
+    longval = 0;
     code = longvalue(ps,&longval);
     *val = longval;
     if (code == ARG_MISSING || code == ARG_ILLEGAL)
     {
         fprintf(stderr,">E %s: missing argument value\n",id);
-        gt_abort(NULL);
+        exit(1);
     }
     else if (code == ARG_TOOBIG || *val != longval)
     {
         fprintf(stderr,">E %s: argument value too large\n",id);
-        gt_abort(NULL);
+        exit(1);
     }
 }
 
@@ -846,18 +838,18 @@ arg_range(char **ps, long *val1, long *val2, char *id)
         if (code == ARG_ILLEGAL)
         {
             fprintf(stderr,">E %s: bad range\n",id);
-            gt_abort(NULL);
+            exit(1);
         }
         else if (code == ARG_TOOBIG)
         {
             fprintf(stderr,">E %s: value too big\n",id);
-            gt_abort(NULL);
+            exit(1);
         }
     }
     else if (*s != ':' && *s != '-')
     {
         fprintf(stderr,">E %s: missing value\n",id);
-        gt_abort(NULL);
+        exit(1);
     }
     else
         *val1 = -NOLIMIT;
@@ -871,12 +863,12 @@ arg_range(char **ps, long *val1, long *val2, char *id)
         else if (code == ARG_TOOBIG)
         {
             fprintf(stderr,">E %s: value too big\n",id);
-            gt_abort(NULL);
+            exit(1);
         }
         else if (code == ARG_ILLEGAL)
         {
             fprintf(stderr,">E %s: illegal range\n",id);
-            gt_abort(NULL);
+            exit(1);
         }
     }
     else
@@ -1100,7 +1092,7 @@ main(int argc, char *argv[])
     int argnum,j;
     char *arg,sw;
     boolean badargs,digraph;
-    long maxin,pval1,pval2;
+    long maxin,pval1=0,pval2=0;
     boolean fswitch,pswitch,cswitch,dswitch;
     boolean aswitch,lswitch,oswitch,Fswitch;
     boolean Aswitch,eswitch,tswitch,qswitch;
@@ -1163,11 +1155,11 @@ main(int argc, char *argv[])
         }
     }
 
-    if (labelorg < 0) gt_abort(">E showg: negative origin forbidden.\n");
+    if (labelorg < 0) GT_ABORT(">E showg: negative origin forbidden.");
 
     if ((aswitch!=0) + (Aswitch!=0) + (eswitch!=0) 
                      + (dswitch!=0) + (cswitch!=0) > 1)
-        gt_abort(">E showg: -aAecd are incompatible\n");
+        GT_ABORT(">E showg: -aAecd are incompatible");
 
     if (badargs)
     {
@@ -1192,7 +1184,7 @@ main(int argc, char *argv[])
     else if ((outfile = fopen(outfilename,"w")) == NULL)
     {
         fprintf(stderr,"Can't open output file %s\n",outfilename);
-        gt_abort(NULL);
+        exit(1);
     }
 
     nin = 0;

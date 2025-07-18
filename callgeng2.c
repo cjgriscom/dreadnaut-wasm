@@ -24,6 +24,13 @@
  * threads, so if you use it yourself things won't work.  This is fixable.
  */
 
+#ifndef _POSIX_C_SOURCE
+#define _POSIX_C_SOURCE 200809L
+#endif
+#ifndef _XOPEN_SOURCE
+#define _XOPEN_SOURCE 500
+#endif
+
 #include "gtools.h"
 #include <pthread.h>
 
@@ -31,7 +38,7 @@
 #define DEFAULTTHREADS 10
 #define MAXGENGARGS 20
 
-static nauty_counter count[MAXTHREADS];  /* Thread i only writes to count[i]. */
+static unsigned long long count[MAXTHREADS];  /* Thread i only writes to count[i]. */
 static TLS_ATTR int threadnumber;
 typedef struct params { int res,mod; char **args; } params;
 
@@ -81,10 +88,11 @@ main(int argc, char *argv[])
     char **gengargs;
     pthread_t thread[MAXTHREADS];
     params par[MAXTHREADS];
-    nauty_counter totalcount;
+    unsigned long long totalcount;
     int threads;
-    double t0,t1;
+    double t0,t1,rt0,rt1;
     boolean badargs;
+    REALTIMEDEFS
 
     badargs = FALSE;
 
@@ -112,6 +120,7 @@ main(int argc, char *argv[])
     nauty_check(WORDSIZE,1,MAXN,NAUTYVERSIONID);
 
     t0 = CPUTIME;
+    rt0 = NAUTYREALTIME;
 
     for (i = 0; i < threads; ++i)
     {
@@ -139,9 +148,11 @@ main(int argc, char *argv[])
     for (i = 0; i < threads; ++i) totalcount += count[i];
 
     t1 = CPUTIME;
+    rt1 = NAUTYREALTIME;
 
-    fprintf(stderr,">Z " COUNTER_FMT " graphs made in %.2f seconds.\n",
-                   totalcount,t1-t0);
+    fprintf(stderr,">Z %llu"
+        " graphs made in %.2f cpu-seconds, %.2f seconds real time.\n",
+        totalcount,t1-t0,rt1-rt0);
 
     exit(0);
 }

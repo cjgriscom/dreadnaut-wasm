@@ -8,4 +8,4 @@
           1 graphs : mindeg=8; ktree=8
           1 graphs : mindeg=9; ktree=10
  108376 graphs altogether; cpu=0.04 sec
->A ./countg --dkk
+>A ./countg --d,kk

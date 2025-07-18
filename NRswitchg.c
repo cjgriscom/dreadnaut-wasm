@@ -1,4 +1,4 @@
-/* NRswitchg.c  nauty version 2.8; B D McKay, Dec 2005 */
+/* NRswitchg.c  B D McKay, Dec 2005 */
 
 #define USAGE "NRswitchg [-lq] [infile [outfile]]"
 
@@ -20,8 +20,8 @@ void
 NRswitch(graph *g, int m, int n, int v, graph *h)
 /* h := g with N-R edge set complemented */
 {
-    register int i,j;
-    register setword *gv,*gi,*hi;
+    int i,j;
+    setword *gv,*gi,*hi;
 #if MAXN
     set Nset[MAXM];
     set Rset[MAXM];

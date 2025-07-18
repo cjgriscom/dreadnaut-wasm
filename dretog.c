@@ -30,6 +30,13 @@
 
 /*************************************************************************/
 
+#ifndef _POSIX_C_SOURCE
+#define _POSIX_C_SOURCE 200809L
+#endif
+#ifndef _XOPEN_SOURCE
+#define _XOPEN_SOURCE 500
+#endif
+
 #include "gtools.h"  /* which includes nauty.h and stdio.h */
 
 /**************************************************************************/

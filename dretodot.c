@@ -258,7 +258,8 @@ main(int argc, char *argv[])
 {
     int m, n, c, a, i, j, k, end, n_count;
     size_t j1, e_count;
-    int argnum, initorg, cell, numCol, modcode, vtx, refcode, MaxV, MaxE;
+    int argnum, initorg, cell, numCol, modcode, vtx, refcode, MaxV;
+    long MaxE;
     char *arg, sw;
     boolean badargs, make_ranks, too_big;
     boolean rswitch, dswitch, mswitch, nswitch, oswitch, iswitch, xswitch;
@@ -270,10 +271,10 @@ main(int argc, char *argv[])
     char model[10];
     int numcells, flind, indivtx;
     long minil, maxil;
-    double hsize, vsize, fsize;
+    double hsize, vsize, fsize=0.0;
     sparsegraph g, g1;
     list *liststart, *listend;
-    int nodescale, distance, StInd, StIndDist, RnkInd, RnkIndDist;
+    int nodescale, distance, StInd=0, StIndDist, RnkInd, RnkIndDist=0;
     
     HELP; PUTVERSION;
     
@@ -309,7 +310,7 @@ main(int argc, char *argv[])
                     else SWBOOLEAN('g',gswitch)
                         else SWBOOLEAN('v',vswitch)
                             else SWINT('V', Vswitch, MaxV, ">E dretodot -V")
-                                else SWINT('E', Eswitch, MaxE, ">E dretodot -E")
+                                else SWLONG('E', Eswitch, MaxE, ">E dretodot -E")
                                     else SWINT('d', dswitch, distance, ">E dretodot -d")
                                         else SWINT('F', fswitch, indivtx, ">E dretodot -F")
                                             else SWINT('m', mswitch, modcode, ">E dretodot -m")
@@ -411,7 +412,7 @@ main(int argc, char *argv[])
             if (n < 0)
                 gt_abort(">E dretodot: g command before n is defined\n");
             if (s[0] != 'g') ungetc(s[0], infile);
-            m = (n + WORDSIZE - 1) / WORDSIZE;
+            m = SETWORDSNEEDED(n);
 #if MAXN
             if (n > MAXN || m > MAXM)
                 gt_abort(">E n or m too big\n");
@@ -524,6 +525,7 @@ main(int argc, char *argv[])
     
     if (vswitch) fprintf(stderr, ">Z  selected drawing model \"%s\".\n",model);
     
+    m = SETWORDSNEEDED(n);
 #if !MAXN
     DYNALLOC2(int, CurrVertices, CurrVertices_sz, n, m, "dretodot");
     DYNALLOC2(int, DistStack, DistStack_sz, n, m, "dretodot");
@@ -618,7 +620,7 @@ main(int argc, char *argv[])
         too_big = TRUE;
     }
     if (e_count > MaxE) {
-        fprintf(stderr, ">E Too many edges (%lu, max: %d; use -E# (at your own risk))\n", e_count, MaxE);
+        fprintf(stderr, ">E Too many edges (%lld, max: %lld; use -E# (at your own risk))\n", (long long)e_count, (long long)MaxE);
         too_big = TRUE;
     }
     

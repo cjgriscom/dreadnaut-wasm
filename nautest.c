@@ -6,9 +6,7 @@ int
 main(int argc, char *argv[])
 {
     int i,j,n,bad,sz;
-    setword w,ww;
-    int curfile;
-    FILE *f;
+    setword w;
     set ss[4];
 
     bad = 0;
@@ -17,11 +15,20 @@ main(int argc, char *argv[])
             NAUTYVERSION,NAUTYVERSIONID,HAVE_TLS);
     printf("MAXN=%d  MAXM=%d  WORDSIZE=%d  NAUTY_INFINITY=%d\n",
             MAXN,MAXM,WORDSIZE,NAUTY_INFINITY);
-    printf("sizes: short=%d int=%d long=%d double=%d boolean=%d"
-           " pointer=%d setword=%d\n",
+    printf("sizes: short=%d int=%d long=%d longlong=%d double=%d boolean=%d"
+           " pointer=%d setword=%d",
             (int)sizeof(short),(int)sizeof(int),(int)sizeof(long),
-            (int)sizeof(double),(int)sizeof(boolean),
+            (int)sizeof(long long int),(int)sizeof(double),(int)sizeof(boolean),
             (int)sizeof(void*),(int)sizeof(setword));
+    printf("\n");
+    printf("       size_t=%d",(int)sizeof(size_t));
+#if SIZEOF_UNINT128 > 0
+    printf(" unsigned __int128=%d",(int)sizeof(unsigned __int128));
+#endif
+#if SIZEOF_UINT128_T > 0
+    printf(" __uint128_t=%d",(int)sizeof(__uint128_t));
+#endif
+    printf("\n");
     printf("CLZ=%d,%d,%d  POPCNT=%d,%d,%d;%d,%d",
             HAVE_CLZ,HAVE_CLZL,HAVE_CLZLL,HAVE_POPCNT,
             HAVE_POPCNTL,HAVE_POPCNTLL,HAVE_MMPOP32,HAVE_MMPOP64);
@@ -32,6 +39,9 @@ main(int argc, char *argv[])
 #ifdef __STDC__
     printf(" __STDC__=%d",__STDC__);
 #endif
+#ifdef _POSIX_VERSION
+    printf(" _POSIX_VERSION=%ld",_POSIX_VERSION);
+#endif
 #ifdef BIGNAUTY
     printf(" BIGNAUTY(obsolete!)");
 #endif
@@ -41,7 +51,7 @@ main(int argc, char *argv[])
 #ifdef SYS_CRAY
     printf(" SYS_CRAY");
 #endif
-#ifdef IS_ARM64
+#if IS_ARM64
     printf(" IS_ARM64=%d",IS_ARM64);
 #endif
 #ifdef _MSC_VER
@@ -50,6 +60,7 @@ main(int argc, char *argv[])
 #ifdef __INTEL_COMPILER
     printf(" __INTEL_COMPILER");
 #endif
+printf("\n");
 #ifdef __POPCNT__
     printf(" __POPCNT__");
 #endif

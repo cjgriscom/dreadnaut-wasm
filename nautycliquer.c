@@ -82,9 +82,9 @@ set_t old_current_clique = current_clique;              \
 set_t old_best_clique = best_clique;                    \
 int old_clique_list_count = clique_list_count;          \
 int old_weight_multiplier = weight_multiplier;          \
-int **old_temp_list = temp_list;                        \
-int old_temp_count = temp_count;
+int **old_temp_list = temp_list; 
 /*
+int old_temp_count = temp_count;
 struct tms old_cputimer;                                \
 struct timeval old_realtimer;                           \
 memcpy(&old_cputimer,&cputimer,sizeof(struct tms));       \
@@ -107,9 +107,9 @@ temp_count = old_temp_count;
 
 
 /* Number of clock ticks per second (as returned by sysconf(_SC_CLK_TCK)) */
+#if 0
 static int clocks_per_sec=0;
-
-
+#endif
 
 /* Recursion and helper functions */
 static boolean sub_unweighted_single(int *table, int size, int min_size,

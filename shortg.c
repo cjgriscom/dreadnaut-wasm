@@ -1,8 +1,18 @@
-/* shortg.c  version 3.3; B D McKay, Apr 13, 2024. */
+/* shortg.c  version 3.4; B D McKay, Mar 7, 2025. */
+
+#ifndef _POSIX_C_SOURCE
+#define _POSIX_C_SOURCE 200809L
+#endif
+#ifndef _XOPEN_SOURCE
+#define _XOPEN_SOURCE 500
+#endif
 
 #include "gtools.h" 
 #include "nautinv.h"
 #include "traces.h"
+#if HAVE_SIGNAL_H
+#include <signal.h>
+#endif
 
 #if SORT_SIZE
 #define USAGE \
@@ -294,16 +304,16 @@ main(int argc, char *argv[])
     FILE *sortin,*sortout;
     int status,loops;
     char *dstr,*cdstr,*prevdstr,*prevcdstr;
-    char sw,*fmt;
+    char sw,*fmt=NULL;
     boolean badargs,quiet,vswitch,dswitch,kswitch,format,uswitch;
     boolean iswitch,Iswitch,Kswitch,Tswitch,Zswitch;
     boolean zswitch,sswitch,gswitch,Sswitch,tswitch;
     boolean digraph;
     nauty_counter numread,prevnumread,numwritten,classsize;
-    int m,n,i,ii,argnum,line,Zval;
+    int m,n,i,argnum,line=0,Zval;
     char *Zarg,Zstring[25];
     int outcode,codetype;
-    int inv,mininvarlevel,maxinvarlevel,invararg;
+    int inv,mininvarlevel=1,maxinvarlevel=1,invararg;
     long minil,maxil;
     pid_t sortpid;
     graph *g;
@@ -325,6 +335,7 @@ main(int argc, char *argv[])
     zswitch = sswitch = gswitch = Sswitch = Tswitch = FALSE;
     tswitch = iswitch = Iswitch = Kswitch = Zswitch = FALSE;
     tempdir = NULL;
+    Zchar = 'B';
     inv = 0;
 
      /* parse argument list */
@@ -592,7 +603,10 @@ main(int argc, char *argv[])
      /* open output file */
 
     if (uswitch)
+    {
+        outfile = NULL;
         outfilename = "<none>";
+    }
     else if (outfilename == NULL || outfilename[0] == '-' || is_pipe)
     {
         outfile = stdout;

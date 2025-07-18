@@ -11,7 +11,7 @@
 
 #include "gtools.h"
 
-static unsigned long counter;
+static unsigned long long counter;
 
 void
 OUTPROC(FILE *outfile, graph *g, int n)
@@ -48,7 +48,7 @@ main(int argc, char *argv[])
 
         counter = 0;
         GENG_MAIN(geng_argc,geng_argv);
-        printf("Number of graphs with %d vertices = %lu.\n",n,counter);
+        printf("Number of graphs with %d vertices = %llu.\n",n,counter);
     }
 
     exit(0);

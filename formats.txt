@@ -1,12 +1,15 @@
 Description of graph6, sparse6 and digraph6 encodings
 -----------------------------------------------------
 Brendan McKay, brendan.mckay@anu.edu.au
-Updated Jun 2015, Apr 2022, Aud 2023.
+Updated Jun 2015, Apr 2022, Aug 2023.
 
 General principles:
 
   All numbers in this description are in decimal unless obviously 
   in binary.
+
+  The character code used in all cases is ASCII, but no bytes are
+  present which would cause ambiguity if the file is read as UTF8.
 
   Apart from the header, there is one object per line. Apart from
   the header, end-of-line characters, and the characters ":", ";"

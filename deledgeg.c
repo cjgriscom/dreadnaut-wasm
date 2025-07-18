@@ -1,4 +1,4 @@
-/* deledgeg.c  version 1.6; B D McKay, Jan 2023. */
+/* deledgeg.c  version 1.7; B D McKay, Jan 2025. */
 
 #define USAGE "deledgeg [-lq] [-v#] [-d#] [-z] [infile [outfile]]"
 
@@ -140,7 +140,8 @@ main(int argc, char *argv[])
         actmindeg = n;
         for (v = 0, gv = g; v < n; ++v, gv += m)
         {
-            degv = 0;
+            if (digraph) degv = 0;
+            else  degv = (ISELEMENT(gv,v) != 0);
             for (i = 0; i < m; ++i)
                 degv += POPCOUNT(gv[i]);
             if (degv < actmindeg) actmindeg = degv;

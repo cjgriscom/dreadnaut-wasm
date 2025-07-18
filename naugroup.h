@@ -37,18 +37,17 @@ typedef struct group_struct
 extern "C" {
 #endif
 
-extern void freepermrec(permrec*, int);
-extern grouprec *groupptr(boolean);
-extern permrec *newpermrec(int);
-extern void groupautomproc(int,int*,int*,int,int,int);
-extern void
-   grouplevelproc(int*,int*,int,int*,statsblk*,int,int,int,int,int,int);
-extern void makecosetreps(grouprec*);
-extern int permcycles(int*,int,int*,boolean);
-extern void allgroup(grouprec*,void(*)(int*,int));
-extern int allgroup2(grouprec*,void(*)(int*,int,int*));
-extern int allgroup3(grouprec*,void(*)(int*,int,int*,void*),void*);
-extern void freegroup(grouprec*);
+void freepermrec(permrec*, int);
+grouprec *groupptr(boolean);
+permrec *newpermrec(int);
+void groupautomproc(int,int*,int*,int,int,int);
+void grouplevelproc(int*,int*,int,int*,statsblk*,int,int,int,int,int,int);
+void makecosetreps(grouprec*);
+int permcycles(int*,int,int*,boolean);
+void allgroup(grouprec*,void(*)(int*,int));
+int allgroup2(grouprec*,void(*)(int*,int,int*));
+int allgroup3(grouprec*,void(*)(int*,int,int*,void*),void*);
+void freegroup(grouprec*);
 
 #ifdef __cplusplus
 }

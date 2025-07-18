@@ -1,9 +1,8 @@
 /*****************************************************************************
 *                                                                            *
-*  Vertex-invariants source file for nauty 2.8.                              *
+*  Vertex-invariants source file for nauty 2.9.                              *
 *                                                                            *
-*   Copyright (1989-2022) Brendan McKay.  All rights reserved.               *
-*   Subject to waivers and disclaimers in nauty.h.                           *
+*   Subject to restrictions and disclaimers in the file COPYRIGHT.           *
 *                                                                            *
 *   CHANGE HISTORY                                                           *
 *       13-Mar-90 : initial release for version 1.5                          *
@@ -1565,7 +1564,7 @@ semirefine(graph *g, int *lab, int *ptn, int level, int *numcells,
     int cnt,bmin,bmax;
     long longcode;
     set *gptr;
-    int maxcell,maxpos,hint;
+    int maxcell,maxpos=0,hint;
 
 #if !MAXN
     DYNALLOC1(int,workperm,workperm_sz,n,"refine");
@@ -1691,7 +1690,7 @@ semirefine(graph *g, int *lab, int *ptn, int level, int *numcells,
                 if (!ISELEMENT(active,cell1))
                 {
                     ADDELEMENT(active,cell1);
-                    DELELEMENT(active,maxpos);     /* check maxpos is alwas defined */
+                    DELELEMENT(active,maxpos);     /* check maxpos is always defined */
                 }
             }
         }

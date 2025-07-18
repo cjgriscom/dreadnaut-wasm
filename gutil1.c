@@ -223,7 +223,8 @@ degstats2(graph *g, boolean digraph, int m, int n,
     }
     else
     {
-        for (i = 0; i < n; ++i) indeg[i] = outdeg[i] = 0;
+        indeg[0] = outdeg[0] = 0;
+        for (i = 1; i < n; ++i) indeg[i] = outdeg[i] = 0;
 
         nloops = 0;
         ned = 0;
@@ -315,14 +316,17 @@ sources_sinks(graph *g, int m, int n, int *sources, int *sinks)
     setword rowor,wk;
     int i,j,nsource,nsink;
     set *gi;
-#if MAXM
+#if MAXN
     setword work[MAXM+1];
 #else
     DYNALLSTAT(setword,work,work_sz);
-    DYNALLOC1(setword,work,work_sz,m,"sources_sinks");
 #endif
 
     if (n == 0) { *sources = *sinks = 0; return; }
+
+#if !MAXN
+    DYNALLOC1(setword,work,work_sz,m,"sources_sinks");
+#endif
     
     if (m == 1)
     {
@@ -611,11 +615,11 @@ twocolouring(graph *g, int *colour, int m, int n)
     DYNALLSTAT(int,queue,queue_sz);
 #endif
 
+    if (n == 0) return TRUE;
 #if !MAXN
     DYNALLOC1(int,queue,queue_sz,n,"twocolouring");
 #endif
 
-    if (n == 0) return TRUE;
     for (i = 0; i < n; ++i) colour[i] = -1;
 
     if (m == 1)
@@ -716,12 +720,13 @@ bipartiteside(graph *g, int m, int n)
     DYNALLSTAT(int,colour,colour_sz);
 #endif
 
+    if (n == 0) return 0;
+
 #if !MAXN
-    DYNALLOC1(int,queue,queue_sz,n,"twocolouring");
-    DYNALLOC1(int,colour,colour_sz,n,"isbipartite");
+    DYNALLOC1(int,queue,queue_sz,n,"bipartiteside");
+    DYNALLOC1(int,colour,colour_sz,n,"bipartiteside");
 #endif
 
-    if (n == 0) return 0;
     for (i = 0; i < n; ++i) colour[i] = -1;
     ans = 0;
 
@@ -812,12 +817,15 @@ girth(graph *g, int m, int n)
 #else   
     DYNALLSTAT(int,queue,queue_sz);
     DYNALLSTAT(int,dist,dist_sz);
-    
+#endif
+
+    if (n == 0) return 0;
+
+#if !MAXN
     DYNALLOC1(int,queue,queue_sz,n,"girth");
     DYNALLOC1(int,dist,dist_sz,n,"girth");
 #endif  
     
-    if (n == 0) return 0;
     best = n+3;
 
     for (v = 0; v < n; ++v)
@@ -870,12 +878,13 @@ find_dist(graph *g, int m, int n, int v, int *dist)
 #else   
     DYNALLSTAT(int,queue,queue_sz);
 #endif  
+
+    if (n == 0) return;
     
 #if !MAXN
-    DYNALLOC1(int,queue,queue_sz,n,"isconnected");
+    DYNALLOC1(int,queue,queue_sz,n,"find_dist");
 #endif  
  
-    if (n == 0) return;
     for (i = 0; i < n; ++i) dist[i] = n;
 
     queue[0] = v;
@@ -912,12 +921,13 @@ find_dist2(graph *g, int m, int n, int v, int w, int *dist)
 #else   
     DYNALLSTAT(int,queue,queue_sz);
 #endif  
+
+    if (n == 0) return;
     
 #if !MAXN
-    DYNALLOC1(int,queue,queue_sz,n,"isconnected");
+    DYNALLOC1(int,queue,queue_sz,n,"find_dist2");
 #endif  
     
-    if (n == 0) return;
     for (i = 0; i < n; ++i) dist[i] = n;
 
     queue[0] = v;
@@ -1040,16 +1050,16 @@ diamstats(graph *g, int m, int n, int *radius, int *diameter)
 
     /* if (m == 1) {diamstats1(g,n,radius,diameter); return; } */
 
-#if !MAXN
-    DYNALLOC1(int,queue,queue_sz,n,"isconnected");
-    DYNALLOC1(int,dist,dist_sz,n,"isconnected");
-#endif
-
     if (n == 0)
     {
         *radius = *diameter = 0;
         return;
     }
+
+#if !MAXN
+    DYNALLOC1(int,queue,queue_sz,n,"diamstats");
+    DYNALLOC1(int,dist,dist_sz,n,"diamstats");
+#endif
 
     diam = -1;
     rad = n;

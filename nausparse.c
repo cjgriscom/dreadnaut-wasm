@@ -1,9 +1,8 @@
 /*****************************************************************************
 *                                                                            *
-*  Sparse-graph-specific auxiliary source file for version 2.8 of nauty.     *
+*  Sparse-graph-specific auxiliary source file for version 2.9 of nauty.     *
 *                                                                            *
-*   Copyright (2004-2022) Brendan McKay.  All rights reserved.               *
-*   Subject to waivers and disclaimers in nauty.h.                           *
+*   Subject to waivers and disclaimers in the file COPYRIGHT.                *
 *                                                                            *
 *   CHANGE HISTORY                                                           *
 *       26-Oct-04 : initial creation                                         *
@@ -1675,10 +1674,13 @@ adjacencies_sg(graph *g, int *lab, int *ptn, int level, int numcells,
 *****************************************************************************/
 
 void
-sparsenauty(sparsegraph *g, int *lab, int *ptn, int *orbits,
+sparsenauty(sparsegraph *sg, int *lab, int *ptn, int *orbits,
             optionblk *options, statsblk *stats, sparsegraph *h)
 {
     int m,n;
+    boolean digraph;
+    int i,*d,*e,*ei,*eilim;
+    size_t *v;
 
     if (options->dispatch != &dispatch_sparse)
     {
@@ -1686,8 +1688,21 @@ sparsenauty(sparsegraph *g, int *lab, int *ptn, int *orbits,
         exit(1);
     }
 
-    n = g->nv;
+    n = sg->nv;
     m = SETWORDSNEEDED(n);
+
+    digraph = options->digraph;
+    if (!digraph)
+    {
+        SG_VDE(sg,v,d,e);
+        for (i = 0; i < n; ++i)
+        {
+            eilim = e + (v[i] + d[i]);
+            for (ei = e+v[i]; ei < eilim; ++ei) if (*ei == i) break;
+            if (ei < eilim) break;
+        }
+        if (i < n) options->digraph = TRUE;
+    }
 
 #if !MAXN
   /*  Don't increase 2*500*m in the following without also increasing
@@ -1695,8 +1710,9 @@ sparsenauty(sparsegraph *g, int *lab, int *ptn, int *orbits,
     DYNALLOC1(set,snwork,snwork_sz,2*500*m,"densenauty malloc");
 #endif
 
-    nauty((graph*)g,lab,ptn,NULL,orbits,options,stats,
+    nauty((graph*)sg,lab,ptn,NULL,orbits,options,stats,
           snwork,2*500*m,m,n,(graph*)h);
+    options->digraph = digraph;
 }
 
 /*****************************************************************************

@@ -110,7 +110,6 @@ Counts:
 **************************************************************************
 
     Author:   B. D. McKay
-              Copyright  B. McKay (2023-).  All rights reserved.
               This software is subject to the conditions and waivers
               detailed in the file COPYRIGHT.
 
@@ -149,16 +148,16 @@ static TLS_ATTR int *cliqueorbs[MAXN];
 #endif
 
 #ifdef OUTPROC
-extern void OUTPROC(FILE*,graph*,int);
+void OUTPROC(FILE*,graph*,int);
 #endif
 #ifdef PRUNE
-extern int PRUNE(graph*,int,int);
+int PRUNE(graph*,int,int);
 #endif
 #ifdef PREPRUNE
-extern int PREPRUNE(graph*,int,int);
+int PREPRUNE(graph*,int,int);
 #endif
 #ifdef SUMMARY
-extern void SUMMARY(nauty_counter,double);
+void SUMMARY(nauty_counter,double);
 #endif
 
 /************************************************************************/

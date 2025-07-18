@@ -27,7 +27,7 @@
   See program text for much more information.\n"
 
 /**************************************************************
-Counts for n=1..45:
+Counts for n=1..50:
 
  1: 1
  2: 1
@@ -192,10 +192,10 @@ static char outstring[MAXOUTLEN];
 
 void (*outproc)(FILE *f, int vpar[], int n);
 #ifdef OUTPROC
-extern void OUTPROC(FILE *f, int vpar[], int n);
+void OUTPROC(FILE *f, int vpar[], int n);
 #endif
 #ifdef PRUNE
-extern int PRUNE(int vpar[], int n);
+int PRUNE(int vpar[], int n);
 #endif
 
 void WritePar(FILE *f, int vpar[], int n)
@@ -496,7 +496,7 @@ main(int argc, char *argv[])
     long Z1,Z2,Z1arg,Z2arg;
     char *outfilename,sw;
     int i,j,argnum;
-    int minnv,maxnv;
+    int minnv,maxnv=1;
     double t1,t2;
     int maxdegarg;
     char msg[201];

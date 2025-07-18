@@ -11,7 +11,7 @@
   -c : Cartesian product\n\
   -l : Lexicographic product (G1[G2])\n\
   -L : Lexicographic product (G2[G1])\n\
-  -t : Tensor (Kronecker, categorical) product\n\
+  -t : Tensor (Kronecker, categorical, direct) product\n\
   -k : Complete (strong, normal) product\n\
   -a# : general case (argument is a 3-digit octal number)\n\
         Add these values giving the condition for an edge:\n\
@@ -104,7 +104,7 @@ void
 arg_oct(char **ps, int *val, char *id)
 {
     int code;
-    long longval;
+    long longval=0;
 
     code = longoctvalue(ps,&longval);
     *val = longval;

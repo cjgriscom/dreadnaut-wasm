@@ -1,4 +1,4 @@
-/* uniqg.c version 0.9; B D McKay, April 2024 */
+/* uniqg.c version 1.1; B D McKay, February 2025 */
 
 #define USAGE "uniqg [-q] [-xFILE] [-Xfile] [-hFILE] [-fxxx] [-u|-S|-t] \n\
                       [-c] [-k] [-i# -I#:# -K#] [infile [outfile]]"
@@ -38,6 +38,10 @@
        assigned to the vertices starting at the last vertex, and\n\
        the new order of the vertices respects decreasing ASCII order.\n\
 \n\
+    -y  Write a 256-bit cryptographic hashcode to stderr. This depends on\n\
+         the set of isomorphism classes but not their order. It also\n\
+         depends on -i, -I, -K, -S, -t and -c.\n\
+\n\
     -i#  select an invariant (1 = twopaths, 2 = adjtriang(K), 3 = triples,\n\
         4 = quadruples, 5 = celltrips, 6 = cellquads, 7 = cellquins,\n\
         8 = distances(K), 9 = indsets(K), 10 = cliques(K), 11 = cellcliq(K),\n\
@@ -54,204 +58,7 @@
 #include "nautinv.h"
 #include "gutils.h"
 #include "traces.h"
-
-/****************************************************************************
-* This implementation of SHA256 is by Brad Conte, released to public domain.
-* Author:     Brad Conte (brad AT bradconte.com) */
-
-#if HAVE_STDINT_H
-typedef unsigned char word8;
-typedef uint32_t word32;
-typedef uint64_t word64;
-#else
-typedef unsigned char word8;
-typedef unsigned int word32;  /* Must be 32 bits */
-typedef unsigned long long word64;  /* Must be 64 bits */
-#endif
-
-typedef struct {
-    word8 data[64];
-    unsigned long long bitlen;
-    word32 datalen;
-    word32 state[8];
-} SHA256_CTX;
-
-void sha256_init(SHA256_CTX *ctx);
-void sha256_update(SHA256_CTX *ctx, const word8 data[], size_t len);
-void sha256_final(SHA256_CTX *ctx, word8 hash[]);
-void sha256(word8 hash[], word8 data[], size_t len);
-
-#define ROTLEFT(a,b) (((a) << (b)) | ((a) >> (32-(b))))
-#define ROTRIGHT(a,b) (((a) >> (b)) | ((a) << (32-(b))))
-
-#define CH(x,y,z) (((x) & (y)) ^ (~(x) & (z)))
-#define MAJ(x,y,z) (((x) & (y)) ^ ((x) & (z)) ^ ((y) & (z)))
-#define EP0(x) (ROTRIGHT(x,2) ^ ROTRIGHT(x,13) ^ ROTRIGHT(x,22))
-#define EP1(x) (ROTRIGHT(x,6) ^ ROTRIGHT(x,11) ^ ROTRIGHT(x,25))
-#define SIG0(x) (ROTRIGHT(x,7) ^ ROTRIGHT(x,18) ^ ((x) >> 3))
-#define SIG1(x) (ROTRIGHT(x,17) ^ ROTRIGHT(x,19) ^ ((x) >> 10))
-
-static const word32 k[64] = {
-    0x428a2f98,0x71374491,0xb5c0fbcf,0xe9b5dba5,0x3956c25b,0x59f111f1,0x923f82a4,0xab1c5ed5,
-    0xd807aa98,0x12835b01,0x243185be,0x550c7dc3,0x72be5d74,0x80deb1fe,0x9bdc06a7,0xc19bf174,
-    0xe49b69c1,0xefbe4786,0x0fc19dc6,0x240ca1cc,0x2de92c6f,0x4a7484aa,0x5cb0a9dc,0x76f988da,
-    0x983e5152,0xa831c66d,0xb00327c8,0xbf597fc7,0xc6e00bf3,0xd5a79147,0x06ca6351,0x14292967,
-    0x27b70a85,0x2e1b2138,0x4d2c6dfc,0x53380d13,0x650a7354,0x766a0abb,0x81c2c92e,0x92722c85,
-    0xa2bfe8a1,0xa81a664b,0xc24b8b70,0xc76c51a3,0xd192e819,0xd6990624,0xf40e3585,0x106aa070,
-    0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,
-    0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2
-};
-
-void sha256_transform(SHA256_CTX *ctx, const word8 data[])
-{
-    word32 a, b, c, d, e, f, g, h, i, j, t1, t2, m[64];
-
-    for (i = 0, j = 0; i < 16; ++i, j += 4)
-            m[i] = (data[j] << 24) | (data[j + 1] << 16) | (data[j + 2] << 8) | (data[j + 3]);
-    for ( ; i < 64; ++i)
-            m[i] = SIG1(m[i - 2]) + m[i - 7] + SIG0(m[i - 15]) + m[i - 16];
-
-    a = ctx->state[0];
-    b = ctx->state[1];
-    c = ctx->state[2];
-    d = ctx->state[3];
-    e = ctx->state[4];
-    f = ctx->state[5];
-    g = ctx->state[6];
-    h = ctx->state[7];
-
-    for (i = 0; i < 64; ++i) {
-        t1 = h + EP1(e) + CH(e,f,g) + k[i] + m[i];
-        t2 = EP0(a) + MAJ(a,b,c);
-        h = g;
-            g = f;
-            f = e;
-            e = d + t1;
-            d = c;
-            c = b;
-            b = a;
-            a = t1 + t2;
-    }
-
-    ctx->state[0] += a;
-    ctx->state[1] += b;
-    ctx->state[2] += c;
-    ctx->state[3] += d;
-    ctx->state[4] += e;
-    ctx->state[5] += f;
-    ctx->state[6] += g;
-    ctx->state[7] += h;
-}
-
-void sha256_init(SHA256_CTX *ctx)
-{
-    ctx->datalen = 0;
-    ctx->bitlen = 0;
-    ctx->state[0] = 0x6a09e667;
-    ctx->state[1] = 0xbb67ae85;
-    ctx->state[2] = 0x3c6ef372;
-    ctx->state[3] = 0xa54ff53a;
-    ctx->state[4] = 0x510e527f;
-    ctx->state[5] = 0x9b05688c;
-    ctx->state[6] = 0x1f83d9ab;
-    ctx->state[7] = 0x5be0cd19;
-}
-
-void sha256_update(SHA256_CTX *ctx, const word8 data[], size_t len)
-{
-    size_t i;
-
-    for (i = 0; i < len; ++i) {
-        ctx->data[ctx->datalen] = data[i];
-        ctx->datalen++;
-        if (ctx->datalen == 64) {
-            sha256_transform(ctx, ctx->data);
-            ctx->bitlen += 512;
-            ctx->datalen = 0;
-        }
-    }
-}
-
-void sha256_update_small(SHA256_CTX *ctx, const int data[], size_t len)
-/* Version for values < 2^16, ignoring high order zeros */
-{
-    size_t i;
-    word8 x;
-
-    for (i = 0; i < len; ++i) {
-        x = data[i] & 0xFF;
-        ctx->data[ctx->datalen] = x;
-        ctx->datalen++;
-        if (ctx->datalen == 64) {
-            sha256_transform(ctx, ctx->data);
-            ctx->bitlen += 512;
-            ctx->datalen = 0;
-        }
-        x = ((word32)data[i] >> 8) & 0xFF;
-        ctx->data[ctx->datalen] = x;
-        ctx->datalen++;
-        if (ctx->datalen == 64) {
-            sha256_transform(ctx, ctx->data);
-            ctx->bitlen += 512;
-            ctx->datalen = 0;
-        }
-    }
-}
-
-void sha256_final(SHA256_CTX *ctx, word8 hash[])
-{
-    word32 i;
-
-    i = ctx->datalen;
-
-    // Pad whatever data is left in the buffer.
-    if (ctx->datalen < 56) {
-        ctx->data[i++] = 0x80;
-        while (i < 56)
-            ctx->data[i++] = 0x00;
-    }
-    else {
-        ctx->data[i++] = 0x80;
-        while (i < 64)
-                ctx->data[i++] = 0x00;
-        sha256_transform(ctx, ctx->data);
-        memset(ctx->data, 0, 56);
-    }
-
-    // Append to the padding the total message's length in bits and transform.
-    ctx->bitlen += ctx->datalen * 8;
-    ctx->data[63] = ctx->bitlen;
-    ctx->data[62] = ctx->bitlen >> 8;
-    ctx->data[61] = ctx->bitlen >> 16;
-    ctx->data[60] = ctx->bitlen >> 24;
-    ctx->data[59] = ctx->bitlen >> 32;
-    ctx->data[58] = ctx->bitlen >> 40;
-    ctx->data[57] = ctx->bitlen >> 48;
-    ctx->data[56] = ctx->bitlen >> 56;
-    sha256_transform(ctx, ctx->data);
-
-    // Since this implementation uses little endian byte ordering and SHA uses big endian,
-    // reverse all the bytes when copying the final state to the output hash.
-    for (i = 0; i < 4; ++i) {
-        hash[i]      = (ctx->state[0] >> (24 - i * 8)) & 0x000000ff;
-        hash[i + 4]  = (ctx->state[1] >> (24 - i * 8)) & 0x000000ff;
-        hash[i + 8]  = (ctx->state[2] >> (24 - i * 8)) & 0x000000ff;
-        hash[i + 12] = (ctx->state[3] >> (24 - i * 8)) & 0x000000ff;
-        hash[i + 16] = (ctx->state[4] >> (24 - i * 8)) & 0x000000ff;
-        hash[i + 20] = (ctx->state[5] >> (24 - i * 8)) & 0x000000ff;
-        hash[i + 24] = (ctx->state[6] >> (24 - i * 8)) & 0x000000ff;
-        hash[i + 28] = (ctx->state[7] >> (24 - i * 8)) & 0x000000ff;
-    }
-}
-
-void sha256(word8 hash[],word8 data[],size_t len)
-{
-    SHA256_CTX ctx;
-
-    sha256_init(&ctx);
-    sha256_update(&ctx, data, len);
-    sha256_final(&ctx,hash);
-}
+#include "nausha.h"
 
 static struct invarrec
 {
@@ -288,40 +95,39 @@ static DEFAULTOPTIONS_DIGRAPH(digraph_options);
 static DEFAULTOPTIONS_TRACES(traces_options);
 static char *fmt;
 
-typedef word64 hashcode[4];
-typedef struct splaynode {
-   struct splaynode *parent,*left,*right;
+typedef nsword64 hashcode[4];
+typedef struct record {
+   struct record *left,*right;
    hashcode hash;
-} SPLAYNODE;
+} Record;
 
-static SPLAYNODE *root=NULL;
-static SPLAYNODE *freelist=NULL;
+#define NUMTREES 64
+#define TREEMSK ((nsword64)(0x3f))  /* NUMTREES bits */
+static Record *root[NUMTREES]={NULL};
+static Record *freelist=NULL;
 
-#define SPLAYALLOC 64  /* How many to allocate at once */
-/* SPLAYNODEs in the free list are linked forwards using the parent field */
+#define ALLOCBATCH 128  /* How many to allocate at once */
+/* Records in the free list are linked forwards using the left field */
 
-static SPLAYNODE*
-allocsplaynode(size_t sz)
+static Record*
+allocrecord(void)
 {
-    SPLAYNODE *p;
+    Record *p;
     int i;
 
     if (freelist == NULL)
     {
-        if ((p = malloc(SPLAYALLOC*sizeof(SPLAYNODE))) == NULL)
+        if ((p = malloc(ALLOCBATCH*sizeof(Record))) == NULL)
             gt_abort(">E uniqg ran out of memory\n");
-        for (i = 0; i < SPLAYALLOC-1; ++i) p[i].parent = &p[i+1];
-        p[SPLAYALLOC-1].parent = NULL;
+        for (i = 0; i < ALLOCBATCH-1; ++i) p[i].left = &p[i+1];
+        p[ALLOCBATCH-1].left = NULL;
         freelist = p;
     }
 
     p = freelist;
-    freelist = p->parent;
+    freelist = p->left;
     return p;
 }
-
-#define SPLAY_ALLOC allocsplaynode
-#define SPLAY_FREE(pp) { pp->parent = freelist; freelist = pp; }
 
 static int
 hashcompare(hashcode hash1, hashcode hash2)
@@ -337,58 +143,45 @@ hashcompare(hashcode hash1, hashcode hash2)
     return 0;
 }
 
-#define ACTION(p) {}
-#define SCAN_ARGS
-#define INSERT_ARGS , hashcode hash, boolean *isnew
-#define PRESENT(p) *isnew = FALSE;
-#define NOT_PRESENT(p) { *isnew = TRUE; p->hash[0] = hash[0]; \
-   p->hash[1] = hash[1]; p->hash[2] = hash[2]; p->hash[3] = hash[3]; }
-#define COMPARE(p) hashcompare(hash,p->hash)
-
-#include "splay.c"
-
-/**************************************************************************/
-
 static void
-shahash(graph *g, int m, int n, hashcode hash)
+tree_insert(hashcode code, boolean *isnew)
 {
-    sha256((unsigned char*)hash,(unsigned char*)g,m*(size_t)n*sizeof(graph));
-}
+    Record *p,*pp;
+    boolean left;
+    int comp,i;
 
-static void
-shahash_sg(sparsegraph *sg, hashcode hash)
-{
-    SHA256_CTX ctx;
-    int n,i,*e,*d;
-    size_t *v;
+    p = root[code[2]&TREEMSK];
+    pp = NULL;
 
-    SG_VDE(sg,v,d,e);
-    n = sg->nv;
-    sha256_init(&ctx);
-    for (i = 0; i < n; ++i)
+    while (p)
     {
-        sha256_update(&ctx,(word8*)(d+i),sizeof(int));
-        if (d[i] > 0) sha256_update(&ctx,(word8*)(e+v[i]),d[i]*sizeof(int));
-        sha256_final(&ctx,(word8*)hash);
+        comp = hashcompare(code,p->hash);
+        if (comp == 0)
+        {
+            *isnew = FALSE;
+            return;
+        }
+        else if (comp < 0)
+        {
+            pp = p;
+            p = p->left;
+            left = TRUE;
+        }
+        else
+        {
+            pp = p;
+            p = p->right;
+            left = FALSE;
+        }
     }
-}
 
-static void
-shahash_small_sg(sparsegraph *sg, hashcode hash)
-{
-    SHA256_CTX ctx;
-    int n,i,*e,*d;
-    size_t *v;
-
-    SG_VDE(sg,v,d,e);
-    n = sg->nv;
-    sha256_init(&ctx);
-    for (i = 0; i < n; ++i)
-    {
-        sha256_update_small(&ctx,d+i,1);
-        if (d[i] > 0) sha256_update_small(&ctx,e+v[i],d[i]);
-        sha256_final(&ctx,(word8*)hash);
-    }
+    p = allocrecord();
+    for (i = 0; i < 4; ++i) p->hash[i] = code[i];
+    p->left = p->right = NULL;
+    if (pp == NULL) root[code[2]&TREEMSK] = p;
+    else if (left)  pp->left = p;
+    else            pp->right = p;
+    *isnew = TRUE;
 }
 
 /**************************************************************************/
@@ -400,7 +193,7 @@ shahash_small_sg(sparsegraph *sg, hashcode hash)
 
 static boolean
 processone(FILE *f, int prog, graph **gcan, sparsegraph *sgcan,
-   boolean *digraph, int *nv, boolean *isnew)
+   boolean *digraph, int *nv, boolean *isnew, hashcode hash)
 /* Read from f, return FALSE if EOF. Otherwise, set *digraph, *n.
    Label with prog and insert hash into tree. Set *isnew.
    If writecanon, set either gcan or sgcan to canonical form. */
@@ -413,10 +206,9 @@ processone(FILE *f, int prog, graph **gcan, sparsegraph *sgcan,
     DYNALLSTAT(graph,h,h_sz);
     DYNALLSTAT(setword,work,work_sz);
     DYNALLSTAT(set,active,active_sz);
-    graph *g;
+    graph *g=NULL;
     TracesStats traces_stats;
     statsblk nauty_stats;
-    hashcode hash;
 
     if ((prog & USEDENSE))
     {
@@ -483,13 +275,11 @@ processone(FILE *f, int prog, graph **gcan, sparsegraph *sgcan,
     }
 
     if ((prog & USEDENSE))
-        shahash(*gcan,m,n,hash);
-    else if ((long)n < 65535)
-        shahash_small_sg(sgcan,hash);
+        shahash(*gcan,m,n,(nsword8*)hash);
     else
-        shahash_sg(sgcan,hash);
+        shahash_sg(sgcan,(nsword8*)hash);
 
-    splay_insert(&root,hash,isnew);
+    tree_insert(hash,isnew);
   
     if ((prog & USEDENSE) && !(prog & ALREADY))
     {
@@ -502,13 +292,37 @@ processone(FILE *f, int prog, graph **gcan, sparsegraph *sgcan,
 
 /**************************************************************************/
 
+static void
+makeystring(hashcode hash, char *ystring)
+{
+    static char c[] = "0123456789" "ABCDEFGHIJKLMNOPQRSTUVWXYZ"
+                                   "abcdefghijklmnopqrstuvwxyz";
+    int i,ii,j;
+    nsword64 wk;
+
+    j = 0;
+    for (i = 0; i < 4; ++i)
+    {
+        if (i > 0) ystring[j++] = ' ';
+        wk = hash[i];
+        for (ii = 0; ii < 11; ++ii)
+        {
+            ystring[j++] = c[wk % 62];
+            wk /= 62;
+        }
+    }
+    ystring[j] = '\0';
+}
+
+/**************************************************************************/
+
 int
 main(int argc, char *argv[])
 {
     int m,n,codetype;
     int argnum,j;
     char *arg,sw;
-    boolean quiet,badargs,digraph,isnew;
+    boolean quiet,badargs,digraph,isnew,yswitch;
     boolean fswitch,hswitch,Hswitch,kswitch;
     boolean iswitch,Iswitch,Kswitch,Sswitch,cswitch;
     boolean uswitch,tswitch,xswitch,Xswitch,Fswitch;
@@ -519,7 +333,8 @@ main(int argc, char *argv[])
     FILE *infile,*outfile;
     unsigned long long nin,nout;
     int prog;
-    hashcode hash;
+    hashcode hash,cumhash;
+    char ystring[50];
     graph *h;
     size_t nr;
     int inv,mininvarlevel,maxinvarlevel,invararg;
@@ -527,15 +342,15 @@ main(int argc, char *argv[])
 
     HELP; PUTVERSION;
 
-    if (sizeof(word32) != 4) gt_abort(">E word32 has wrong length\n");
-    if (sizeof(word64) != 8) gt_abort(">E word64 has wrong length\n");
+    if (sizeof(nsword32) != 4) gt_abort(">E nsword32 has wrong length\n");
+    if (sizeof(nsword64) != 8) gt_abort(">E nsword64 has wrong length\n");
 
     nauty_check(WORDSIZE,1,1,NAUTYVERSIONID);
 
     quiet = badargs = Hswitch = kswitch = cswitch = FALSE;
     fswitch = xswitch = Xswitch = hswitch = FALSE;
     iswitch = Iswitch = Kswitch = Fswitch = FALSE;
-    uswitch = Sswitch = tswitch = FALSE;
+    uswitch = Sswitch = tswitch = yswitch = FALSE;
     infilename = outfilename = NULL;
     inv = 0;
 
@@ -558,6 +373,7 @@ main(int argc, char *argv[])
                 else SWBOOLEAN('c',cswitch)
                 else SWBOOLEAN('H',Hswitch)
                 else SWBOOLEAN('F',Fswitch)
+                else SWBOOLEAN('y',yswitch)
                 else SWINT('i',iswitch,inv,"uniqg -i")
                 else SWINT('K',Kswitch,invararg,"uniqg -K")
                 else SWRANGE('k',":-",Iswitch,minil,maxil,"uniqg -k")
@@ -660,8 +476,6 @@ main(int argc, char *argv[])
         fflush(stderr);
     }
 
-    root = NULL;
-
     dense_options.getcanon = sparse_options.getcanon = TRUE;
     digraph_options.getcanon = traces_options.getcanon = TRUE;
     dense_options.defaultptn = sparse_options.defaultptn = FALSE;
@@ -690,7 +504,7 @@ main(int argc, char *argv[])
         if ((infile = opengraphfile(xarg,&codetype,FALSE,1)) == NULL)
             exit(1);
         nin = nout = 0;
-        while (processone(infile,prog,&h,&sh,&digraph,&n,&isnew))
+        while (processone(infile,prog,&h,&sh,&digraph,&n,&isnew,hash))
         {
             ++nin;
             if (isnew) ++nout;
@@ -706,7 +520,7 @@ main(int argc, char *argv[])
         if ((infile = opengraphfile(Xarg,&codetype,FALSE,1)) == NULL)
             exit(1);
         nin = nout = 0;
-        while (processone(infile,prog|ALREADY,&h,&sh,&digraph,&n,&isnew))
+        while (processone(infile,prog|ALREADY,&h,&sh,&digraph,&n,&isnew,hash))
         {
             ++nin;
             if (isnew) ++nout;
@@ -726,7 +540,7 @@ main(int argc, char *argv[])
         {
             if (nr != 32) gt_abort_1(">E error reading %s\n",harg);
             ++nin;
-            splay_insert(&root,hash,&isnew);
+            tree_insert(hash,&isnew);
             if (isnew) ++nout;
         }
         fclose(infile);
@@ -757,20 +571,23 @@ main(int argc, char *argv[])
     }
 
     nin = nout = 0;
+    cumhash[0] = cumhash[1] = cumhash[2] = cumhash[3] = 0;
 
     while (processone(infile,(cswitch?(prog|ALREADY):prog),&h,&sh,
-                      &digraph,&n,&isnew))
+                      &digraph,&n,&isnew,hash))
     {
         ++nin;
         if (isnew)
         {
             ++nout;
+            cumhash[0] += hash[0]; cumhash[1] += hash[1];
+            cumhash[2] += hash[2]; cumhash[3] += hash[3];
             if (uswitch)
             {
             }
             else if (Hswitch)
             {
-                if (fwrite(root->hash,1,32,outfile) != 32)
+                if (fwrite(hash,1,32,outfile) != 32)
                     gt_abort(">E error in writing hashcode\n");
             }
             else if (kswitch)
@@ -800,6 +617,12 @@ main(int argc, char *argv[])
     }
 
     t = CPUTIME - t;
+
+    if (yswitch)
+    {
+        makeystring(cumhash,ystring);
+        fprintf(stderr,">Y %s\n",ystring);
+    }
 
     if (!quiet)
     {

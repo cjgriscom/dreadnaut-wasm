@@ -42,28 +42,26 @@ extern "C" {
 
 /* See separate file schreier.txt for a description of usage. */
 
-extern void freeschreier(schreier **gp, permnode **gens);
-extern void addpermutation(permnode **ring, int *p, int n); 
-extern permnode *findpermutation(permnode *gens, int *p, int n);
-extern boolean addgenerator(schreier **gp, permnode **gens, int *p, int n);
-extern boolean
-	condaddgenerator(schreier **gp, permnode **gens, int *p, int n);
-extern boolean expandschreier(schreier *gp, permnode **gens, int n);
-extern int *getorbits(int *fix, int nfix,
-		 schreier *gp, permnode **gens, int n);
-extern int getorbitsmin(int *fix, int nfix, schreier *gp, permnode **gens,
+void freeschreier(schreier **gp, permnode **gens);
+void addpermutation(permnode **ring, int *p, int n); 
+permnode *findpermutation(permnode *gens, int *p, int n);
+boolean addgenerator(schreier **gp, permnode **gens, int *p, int n);
+boolean condaddgenerator(schreier **gp, permnode **gens, int *p, int n);
+boolean expandschreier(schreier *gp, permnode **gens, int n);
+int *getorbits(int *fix, int nfix, schreier *gp, permnode **gens, int n);
+int getorbitsmin(int *fix, int nfix, schreier *gp, permnode **gens,
 		 int **orbits, int *cell, int ncell, int n, boolean changed);
-extern void pruneset(set *fixset, schreier *gp, permnode **gens,
+void pruneset(set *fixset, schreier *gp, permnode **gens,
 		      set *x, int m, int n);
-extern void newgroup(schreier **gp, permnode **gens, int n);
-extern void schreier_freedyn(void);
-extern int schreier_fails(int nfails);
-extern void dumpschreier(FILE *f, schreier *gp, permnode *gens, int n);
-extern int schreier_gens(permnode *gens);
-extern void deleteunmarked(permnode **gens);
-extern void grouporder(int *fix, int nfix,  schreier *gp, permnode **gens,
+void newgroup(schreier **gp, permnode **gens, int n);
+void schreier_freedyn(void);
+int schreier_fails(int nfails);
+void dumpschreier(FILE *f, schreier *gp, permnode *gens, int n);
+int schreier_gens(permnode *gens);
+void deleteunmarked(permnode **gens);
+void grouporder(int *fix, int nfix,  schreier *gp, permnode **gens,
 		double *grpsize1, int *grpsize2, int n);
-extern void schreier_check(int wordsize, int m, int n, int version);
+void schreier_check(int wordsize, int m, int n, int version);
 
 #ifdef __cplusplus
 }

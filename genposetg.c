@@ -1,4 +1,5 @@
-/* poset generator version 1.0, October 8, 2022. */
+/* poset generator version 1.1, September, 2024.
+   Gunnar Brinkmann and Brendan McKay. */
 
 /* Compile: cc -O3 -march=native genposetg.c nautyS1.a
    If -DCOUNT is added, only counting is allowed and writing is disabled.
@@ -41,15 +42,17 @@
    on the genposetg compilation command like this:  -DPLUGIN='"posetplugin.c"'
    (including all the quotes). This file can contain
    1. Declaration of static variables and procedures.
-   2. Optional macros POSET_PRUNE0, POSET_PRUNE1, and POSET_SUMMARY .
+   2. Optional macros POSET_PRUNE0, POSET_PRUNE1, POSET_SUMMARY, POSET_WRITE .
     POSET_PRUNE0(pos,n) is called in the output procedure for each poset.
-        The poset is pos[0..n-1] in internal labelling.
+        The poset is a graph pos[0..n-1] in internal labelling.
     POSET_PRUNE1(pos,n) is the same except now the poset is in topological order.
         In each case you can discard the poset by executing "return".
         Note that POSET_PRUNE1 is only invoked if you use the 't' switch.
         You can use both POSET_PRUNE0 and POSET_PRUNE1 if you want.
     POSET_SUMMARY is placed just before the final summary line and is intended
         for writing statistics that the other macros have collected.
+    POSET_WRITE specifies an alternative to writed6 for writing the posets.
+        It will be invoked with arguments (FILE*,pos,1,n).
 
    For example, this plugin will restrict outputs to those posets with
    exactly two sources and two sinks.
@@ -64,6 +67,8 @@
    Authors:  Gunnar Brinkmann and Brendan McKay.
 */
 
+#pragma GCC diagnostic ignored "-Wmaybe-uninitialized"
+
 #if defined(WORDSIZE) && WORDSIZE != 16
 #error "Only WORDSIZE=16 is supported for this program."
 #endif
@@ -74,6 +79,7 @@
 #define MAXCHECK 6 /* Konstante, ab wann versucht wird, Nachbarschaften zu faerben, um .. */
 #define CHECKSIZE (MAXCHECK>MAXN ? MAXCHECK : MAXN)
 
+#define ONE_WORD_SETS
 #include "gtools.h"
 #include <ctype.h>
 
@@ -108,7 +114,7 @@ static statsblk stats ;
 static setword workspace[100*MAXN];
 /*-------------------------------------------*/
 
-static long long int nautycalls_canon=0, nautycalls_group=0;
+// static long long int nautycalls_canon=0, nautycalls_group=0;
 static long long int anzahl_posets=0, written_posets=0;
 static long long int punkte_letztes_level[MAXN+1]={0};
 static long long int anzahl_level[MAXN+1]={0};
@@ -171,15 +177,84 @@ static char elementlist[MAXGRAPH+1][MAXN+1]; /* Die Liste der Elemente */
 /* BDM char first_bit[MAXGRAPH+1];  * das Makro FIRSTBIT als Vektor */
 
 static int output=0;
+static int connected=0;
 
 #ifdef PLUGIN
 #include PLUGIN
 #endif
 
+#ifndef POSET_WRITE
+#define POSET_WRITE writed6
+#endif
+
+#if 0
+static int
+isconnposet(graph *g, int n)
+/* Returns 1 if connected, 0 if not connected */
+{
+    graph h[MAXN];
+    int nh,i,j,k;
+    setword w;
+
+  /* This method is theoretically terrible, but since it will
+     only be applied to small digraphs, it might be ok. */
+
+    nh = 0;
+    for (i = 0; i < n; ++i)
+    {
+        w = bit[i] | g[i];
+        for (j = k = 0; j < nh; ++j)
+            if ((w & h[j]))
+                w |= h[j];
+            else
+                h[k++] = h[j];
+        h[k++] = w;
+        nh = k;
+    }
+
+    return nh == 1;
+}
+#endif
+
+static int
+posetcomponents(graph *g, int n, graph *comp)
+/* Puts the components of g into comp and returns the number of them. */
+{
+    int nh,i,j,k;
+    setword w;
+
+    nh = 0;
+    for (i = 0; i < n; ++i)
+    {
+        w = bit[i] | g[i];
+        for (j = k = 0; j < nh; ++j)
+            if ((w & comp[j]))
+                w |= comp[j];
+            else
+                comp[k++] = comp[j];
+        comp[k++] = w;
+        nh = k;
+    }
+
+    return nh;
+}
+
+static boolean
+hitsall(graph *comp, int ncomp, graph w)
+/* Test if w intersects comp[0..ncomp-1] */
+{
+    int i;
+
+    for (i = 0; i < ncomp; ++i)
+        if (!(comp[i]&w)) return FALSE;
+
+    return TRUE;
+}
+
 /**********************************************************************************/
 
 static void writeposet(graph *g, int n)
-/* Write a poset to stdout, optionally in upper-triangular form */
+/* Write a poset to stdout */
 {
     graph h[MAXN];
     int p[MAXN],pinv[MAXN];
@@ -300,133 +375,133 @@ static boolean refinex(graph *g, int *lab, int *ptn, int *numcells,
 
   In all other cases, the refinement is completed and TRUE is returned. */
 {
-        register int i,c1,c2,labc1;
-        register setword x,lact;
-        int split1,split2,cell1,cell2;
-        int cnt,bmin,bmax;
-        set *gptr;
-        setword workset;
-        int workperm[MAXN];
-        int bucket[MAXN+2];
+    int i,c1,c2,labc1;
+    setword x,lact;
+    int split1,split2,cell1,cell2;
+    int cnt,bmin,bmax;
+    set *gptr;
+    setword workset;
+    int workperm[MAXN];
+    int bucket[MAXN+2];
 
-        if (n == 1)  return TRUE;
+    if (n == 1)  return TRUE;
 
-        lact = *active;
+    lact = *active;
 
-        split1 = -1;
-        while (*numcells < n && lact)
-        {
-            x = lact & (-lact);
-            split1 = FIRSTBIT(x);
-            lact ^= x;
-            
-            for (split2 = split1; ptn[split2] > 0; ++split2)
-            {}
-            if (split1 == split2)       /* trivial splitting cell */
-            {
-                gptr = GRAPHROW(g,lab[split1],1);
-                for (cell1 = 0; cell1 < n; cell1 = cell2 + 1)
-                {
-                    for (cell2 = cell1; ptn[cell2] > 0; ++cell2)
-                    {}
-                    if (cell1 == cell2)
-                        continue;
-                    c1 = cell1;
-                    c2 = cell2;
-                    while (c1 <= c2)
-                    {
-                        labc1 = lab[c1];
-                        if (ISELEMENT1(gptr,labc1))
-                            ++c1;
-                        else
-                        {
-                            lab[c1] = lab[c2];
-                            lab[c2] = labc1;
-                            --c2;
-                        }
-                    }
-                    if (c2 >= cell1 && c1 <= cell2)
-                    {
-                        ptn[c2] = 0;
-                        ++*numcells;
-                        lact |= bit[c1];
-                    }
-                }
-            }
-
-            else        /* nontrivial splitting cell */
-            {
-                workset = 0;
-                for (i = split1; i <= split2; ++i)
-                    workset |= bit[lab[i]];
-
-                for (cell1 = 0; cell1 < n; cell1 = cell2 + 1)
-                {
-                    for (cell2 = cell1; ptn[cell2] > 0; ++cell2)
-                    {}
-                    if (cell1 == cell2)
-                        continue;
-                    i = cell1;
-                    if ((x = workset & g[lab[i]]))     /* not == */
-                        cnt = POPCOUNT(x);
-                    else
-                        cnt = 0;
-                    count[i] = bmin = bmax = cnt;
-                    bucket[cnt] = 1;
-                    while (++i <= cell2)
-                    {
-                        if ((x = workset & g[lab[i]])) /* not == */
-                            cnt = POPCOUNT(x);
-                        else
-                            cnt = 0;
-                        while (bmin > cnt)
-                            bucket[--bmin] = 0;
-                        while (bmax < cnt)
-                            bucket[++bmax] = 0;
-                        ++bucket[cnt];
-                        count[i] = cnt;
-                    }
-                    if (bmin == bmax)
-                    {
-                        continue;
-                    }
-                    c1 = cell1;
-                    for (i = bmin; i <= bmax; ++i)
-                        if (bucket[i])
-                        {
-                            c2 = c1 + bucket[i];
-                            bucket[i] = c1;
-                            if (c1 != cell1)
-                            {
-                                lact |= bit[c1];
-                                ++*numcells;
-                            }
-                            if (c2 <= cell2)
-                                ptn[c2-1] = 0;
-                            c1 = c2;
-                        }
-                    for (i = cell1; i <= cell2; ++i)
-                        workperm[bucket[count[i]]++] = lab[i];
-                    for (i = cell1; i <= cell2; ++i)
-                        lab[i] = workperm[i];
-                }
-            }
-
-            if (good_vertices)
-            {
-                for (i = n-1; (bit[lab[i]]&good_vertices) == 0 ; --i) {}
+    split1 = -1;
+    while (*numcells < n && lact)
+    {
+        x = lact & (-lact);
+        split1 = FIRSTBIT(x);
+        lact ^= x;
         
-                while (ptn[i] > 0) ++i;
-
-                for (; lab[i] != n-1;)
+        for (split2 = split1; ptn[split2] > 0; ++split2)
+        {}
+        if (split1 == split2)       /* trivial splitting cell */
+        {
+            gptr = GRAPHROW(g,lab[split1],1);
+            for (cell1 = 0; cell1 < n; cell1 = cell2 + 1)
+            {
+                for (cell2 = cell1; ptn[cell2] > 0; ++cell2)
+                {}
+                if (cell1 == cell2)
+                    continue;
+                c1 = cell1;
+                c2 = cell2;
+                while (c1 <= c2)
                 {
-                    --i;
-                    if (i < 0 || ptn[i] == 0) return FALSE;
+                    labc1 = lab[c1];
+                    if (ISELEMENT1(gptr,labc1))
+                        ++c1;
+                    else
+                    {
+                        lab[c1] = lab[c2];
+                        lab[c2] = labc1;
+                        --c2;
+                    }
+                }
+                if (c2 >= cell1 && c1 <= cell2)
+                {
+                    ptn[c2] = 0;
+                    ++*numcells;
+                    lact |= bit[c1];
                 }
             }
         }
 
-        return TRUE;
+        else        /* nontrivial splitting cell */
+        {
+            workset = 0;
+            for (i = split1; i <= split2; ++i)
+            workset |= bit[lab[i]];
+
+            for (cell1 = 0; cell1 < n; cell1 = cell2 + 1)
+            {
+                for (cell2 = cell1; ptn[cell2] > 0; ++cell2)
+                {}
+                if (cell1 == cell2)
+                    continue;
+                i = cell1;
+                if ((x = workset & g[lab[i]]))     /* not == */
+                    cnt = POPCOUNT(x);
+                else
+                    cnt = 0;
+                count[i] = bmin = bmax = cnt;
+                bucket[cnt] = 1;
+                while (++i <= cell2)
+                {
+                    if ((x = workset & g[lab[i]])) /* not == */
+                        cnt = POPCOUNT(x);
+                    else
+                        cnt = 0;
+                    while (bmin > cnt)
+                        bucket[--bmin] = 0;
+                    while (bmax < cnt)
+                        bucket[++bmax] = 0;
+                    ++bucket[cnt];
+                    count[i] = cnt;
+                }
+                if (bmin == bmax)
+                {
+                    continue;
+                }
+                c1 = cell1;
+                for (i = bmin; i <= bmax; ++i)
+                    if (bucket[i])
+                    {
+                        c2 = c1 + bucket[i];
+                        bucket[i] = c1;
+                        if (c1 != cell1)
+                        {
+                            lact |= bit[c1];
+                            ++*numcells;
+                        }
+                        if (c2 <= cell2)
+                            ptn[c2-1] = 0;
+                        c1 = c2;
+                    }
+                for (i = cell1; i <= cell2; ++i)
+                    workperm[bucket[count[i]]++] = lab[i];
+                for (i = cell1; i <= cell2; ++i)
+                        lab[i] = workperm[i];
+            }
+        }
+
+        if (good_vertices)
+        {
+            for (i = n-1; (bit[lab[i]]&good_vertices) == 0 ; --i) {}
+    
+            while (ptn[i] > 0) ++i;
+
+            for (; lab[i] != n-1;)
+            {
+                --i;
+                if (i < 0 || ptn[i] == 0) return FALSE;
+            }
+        }
+    }
+
+    return TRUE;
 }
 
 
@@ -652,6 +727,7 @@ static boolean call_nauty(int *lab, int *ptn, int n, int *orbits,
 
 /**********************SCHREIBENBS*************SCHREIB_ALLE_NBS******************************************/
 
+#if 0
 static void schreibenbs(graph nbs[])
 {
   int i;
@@ -668,6 +744,7 @@ static void schreib_alle_nbs(graph nbs[])
   for ( ;*nbs!=0; nbs++) schreibenbs(nbs);
   fprintf(stderr,"\n");
 }
+#endif
 
 /*******************************DO_SUBSETS***************************************/
 
@@ -731,11 +808,13 @@ static void usage(char name[])
   fprintf(stderr,"   Generate the Hasse diagrams of the posets with n points\n");
   fprintf(stderr,"   o  causes digraph6 output in arbitrary order to be written to stdout\n");
   fprintf(stderr,"   t  causes digraph6 output in topological order to be written to stdout\n");
+  fprintf(stderr,"   c  restricts the program to connected posets\n");
   fprintf(stderr,"   q  supresses statistics except for the final count\n");
   fprintf(stderr,"   m x y  with 0 <= x < y divides the generation\n"
               "        into y parts and writes only part x.\n");
   exit(0); } 
 
+#if 0
 /**********************************SCHREIBEPOSET***********************************/
 
 static void schreibeposet()
@@ -762,10 +841,10 @@ fprintf(stderr,"\n\nDas ungerichtete Poset:\n");
     for (j=-1; (j=nextelement(undirected_poset+i,1,j))>=0 ; ) fprintf(stderr," %d",j);
     fprintf(stderr,"\n");
     }
-
-
 }
+#endif
 
+#if 0
 /**********************************AUFSCHREIBEN***********************************/
 
 static void aufschreiben()
@@ -778,6 +857,7 @@ static void aufschreiben()
 #endif
       writeposet(poset,punktzahl);
 }
+#endif
 
 /**********************************AUFSCHREIBEN_2***********************************/
 
@@ -970,8 +1050,8 @@ static void add_last_point (int level, int do_nauty, graph *last_nbs, graph maxp
   int nautylab[MAXN], nautyptn[MAXN];
   graph *local_orbitnumber;
   int i, j, l, test, test2, merke;
-  int newlevel=0;
-  graph dummy, dummy2, *run, *ende, *local_subsets, *local_nbs;
+ // int newlevel=0;   BDM
+  graph dummy, dummy2, *run, *local_subsets, *local_nbs;
   setword good_vertices;
   boolean accept;
   int op_triv=0; /* Ist die Operation der Gruppe auf den Nachbarschaften leicht als
@@ -981,10 +1061,21 @@ static void add_last_point (int level, int do_nauty, graph *last_nbs, graph maxp
   unsigned long int merkef;
   graph which_nbs[MAXN];
   int nicht_kanonisch, levelm1, anzahl_save_orbits;
- char *i2;
+  char *i2;
+  int connec,ncomp;  /* BDM */
+  graph comp[MAXN];
 
 levelm1=level-1;
 
+/* BDM: If the poset is connected so far, it is still connected when the last
+   point is added. If the 'c' option is absent, we pretend it is connected. */
+   if (connected)
+   {
+       ncomp = posetcomponents(poset,punktzahl,comp);
+       connec = (ncomp == 1);
+   }
+   else
+       connec = 1;
 
 if (points_on_level[level]==0)
   {
@@ -1031,7 +1122,7 @@ if (points_on_level[level]==0)
               if (ISELEMENT(&dummy2,merke)) previous_nbs=jump[l][merke];
               else
                 { 
-                  ende=jump[l][merke];
+                  // ende=jump[l][merke];  BDM
                   for (;*previous_nbs!=0;previous_nbs++)
                     if ((dummy2 & *previous_nbs)==0) /* Nur wenn der Schnitt leer ist, ist es
                                                         eine moegliche Nachbarschaft */
@@ -1103,7 +1194,7 @@ if (points_on_level[level]==0)
 
 
 if (points_on_level[level]==0) 
-  { newlevel=1; 
+  { // newlevel=1;   BDM
   first_point_level[level]=punktzahl;
   if (op_triv || (stats.numorbits==punktzahl)) maxorbsize_level[levelm1]=1; 
   else maxorbsize_level[levelm1]=INT_MAX; /* erstmal */
@@ -1135,15 +1226,22 @@ if (points_on_level[level]==0)
    punkte_letztes_level[points_on_level[level]+1]+=anzahl_save_orbits;
    anzahl_level[level]+=anzahl_save_orbits;
    for (run=local_nonequiv_nbs; *run!=0; run++)
-     { dummy=all_ancestors[*run];
-     relations[relationscounter+POPCOUNT(dummy)]++;
-     minmaxline[POPCOUNT(maxpoints & ~dummy)]++;
-#ifndef COUNT
-     if (output)
-       { poset[punktzahl]=*run; punktzahl++; aufschreiben(); punktzahl--; }
-#endif
+     { if (connec || hitsall(comp,ncomp,*run|bit[punktzahl]))
+       { dummy=all_ancestors[*run];
+         relations[relationscounter+POPCOUNT(dummy)]++;
+         minmaxline[POPCOUNT(maxpoints & ~dummy)]++;
+         if (output)
+         { poset[punktzahl]=*run;
+           writeposet(poset,punktzahl+1);
+         }
+       }
+       else
+       { anzahl_posets--;
+         punkte_letztes_level[points_on_level[level]+1]--;
+         anzahl_level[level]--;
+       }
      }
-   } /* ende noch kein Punkt auf dem Level */
+ } /* ende noch kein Punkt auf dem Level */
    
  else /* d.h. es ist mindestens ein Punkt bereits auf dem Level */
  {
@@ -1180,13 +1278,18 @@ if (points_on_level[level]==0)
 
    if ((maxorbsize_level[levelm1]==1) || 
        (local_orbitnumber[*run]>local_orbitnumber[poset[punktzahl-2]]))
-     { dummy=all_ancestors[*run];
-       relations[relationscounter+POPCOUNT(dummy)]++;
-       minmaxline[POPCOUNT(maxpoints & ~dummy)]++;
-#ifndef COUNT
-     if (output)
-       { aufschreiben(); }
-#endif
+     { if (connec || hitsall(comp,ncomp,*run|bit[punktzahl-1]))
+       { dummy=all_ancestors[*run];
+         minmaxline[POPCOUNT(maxpoints & ~dummy)]++;
+         relations[relationscounter+POPCOUNT(dummy)]++;
+         if (output) writeposet(poset,punktzahl);
+       }
+       else
+       {
+          anzahl_posets--;
+          punkte_letztes_level[points_on_level[level]]--;
+          anzahl_level[level]--;
+       }
      }
    else /* zunaechst noch zwei Heuristiken: Wenn alle mit der gleichen orbitnummer identische
            Nachbarschaften haben (d.h. nicht verschiedene, die nur im gleichen Orbit liegen), 
@@ -1195,16 +1298,15 @@ if (points_on_level[level]==0)
      for (i=punktzahl-2, test=1; (local_orbitnumber[poset[i]]==j) 
             && (i>=first_point_level[level]);i--) if (poset[i]!=*run) test=0;
      if (test)
-       { anzahl_posets++;
-       punkte_letztes_level[points_on_level[level]]++;
-       anzahl_level[level]++;
-       dummy=all_ancestors[*run];
-       relations[relationscounter+POPCOUNT(dummy)]++;
-       minmaxline[POPCOUNT(maxpoints & ~dummy)]++;
-#ifndef COUNT
-     if (output)
-       { aufschreiben(); }
-#endif
+       { if (connec || hitsall(comp,ncomp,*run|bit[punktzahl-1]))
+         { anzahl_posets++;
+           punkte_letztes_level[points_on_level[level]]++;
+           anzahl_level[level]++;
+           dummy=all_ancestors[*run];
+           relations[relationscounter+POPCOUNT(dummy)]++;
+           minmaxline[POPCOUNT(maxpoints & ~dummy)]++;
+           if (output) writeposet(poset,punktzahl);
+         }
        }
      else /* noch ein Sonderfall: Wenn die maximale Orbitgroesse 2 ist und noch kein Knoten
              mit Nachbarn eines anderen Orbits auf dem Level, so ist der Knoten kanonisch,
@@ -1213,21 +1315,20 @@ if (points_on_level[level]==0)
        if ((maxorbsize_level[levelm1]==2) && 
            (local_orbitnumber[*run]==local_orbitnumber[poset[first_point_level[level]]]))
          { j=local_orbitnumber[*run];
-         dummy=*run; test=1; test2=0;
-         for (i=punktzahl-2; (local_orbitnumber[poset[i]]==j) && (i>=first_point_level[level]);i--) 
-           if (poset[i]==dummy) test++; else test2++;
-         if (test>=test2)
-           { anzahl_posets++;
-           punkte_letztes_level[points_on_level[level]]++;
-           anzahl_level[level]++;
-           dummy=all_ancestors[*run];
-           relations[relationscounter+POPCOUNT(dummy)]++;
-           minmaxline[POPCOUNT(maxpoints & ~dummy)]++;
-#ifndef COUNT
-           if (output)
-             { aufschreiben(); }
-#endif
-           }
+           dummy=*run; test=1; test2=0;
+           for (i=punktzahl-2; (local_orbitnumber[poset[i]]==j) && (i>=first_point_level[level]);i--) 
+             if (poset[i]==dummy) test++; else test2++;
+           if (test>=test2)
+             { if (connec || hitsall(comp,ncomp,*run|bit[punktzahl-1]))
+               { anzahl_posets++;
+                 punkte_letztes_level[points_on_level[level]]++;
+                 anzahl_level[level]++;
+                 dummy=all_ancestors[*run];
+                 relations[relationscounter+POPCOUNT(dummy)]++;
+                 minmaxline[POPCOUNT(maxpoints & ~dummy)]++;
+                 if (output) writeposet(poset,punktzahl);
+               }
+             }
          }
    else /* sonst muss vielleicht doch nauty gefragt werden, ob der letzte Punkt kanonisch ist */
      { 
@@ -1282,7 +1383,6 @@ if (points_on_level[level]==0)
 
        if ((test==0) && (nicht_kanonisch==0)) /* OK -- dann halt doch nauty... */
          {
-
            undirected_poset[punktzahl-1]=*run;
            FOREACH(i2,*run) ADDELEMENT(undirected_poset+(*i2),punktzahl-1);
 
@@ -1298,31 +1398,29 @@ if (points_on_level[level]==0)
            undirected_poset[punktzahl-1]=0;
            j=local_orbitnumber[poset[punktzahl-1]]; /* nur zum Puffern */
            if (accept)
-             { anzahl_posets++;
-             punkte_letztes_level[points_on_level[level]]++;
-             anzahl_level[level]++;
-             dummy=all_ancestors[*run];
-             relations[relationscounter+POPCOUNT(dummy)]++;
-             minmaxline[POPCOUNT(maxpoints & ~dummy)]++;
-#ifndef COUNT
-             if (output)
-               { aufschreiben(); }
-#endif
+             { if (connec || hitsall(comp,ncomp,*run|bit[punktzahl-1]))
+               { anzahl_posets++;
+                 punkte_letztes_level[points_on_level[level]]++;
+                 anzahl_level[level]++;
+                 dummy=all_ancestors[*run];
+                 relations[relationscounter+POPCOUNT(dummy)]++;
+                 minmaxline[POPCOUNT(maxpoints & ~dummy)]++;
+                 if (output) writeposet(poset,punktzahl);
+               }
              } /* ende akzeptiert mit nauty */
 
          } /* ende halt doch nauty */
        else /* konnte ohne nauty entschieden werden */
          if ((test==1) && (nicht_kanonisch==0))
-             { anzahl_posets++;
-             punkte_letztes_level[points_on_level[level]]++;
-             anzahl_level[level]++;
-             dummy=all_ancestors[*run];
-             relations[relationscounter+POPCOUNT(dummy)]++;
-             minmaxline[POPCOUNT(maxpoints & ~dummy)]++;
-#ifndef COUNT
-             if (output)
-               { aufschreiben(); }
-#endif
+             { if (connec || hitsall(comp,ncomp,*run|bit[punktzahl-1]))
+               { anzahl_posets++;
+                 punkte_letztes_level[points_on_level[level]]++;
+                 anzahl_level[level]++;
+                 dummy=all_ancestors[*run];
+                 relations[relationscounter+POPCOUNT(dummy)]++;
+                 minmaxline[POPCOUNT(maxpoints & ~dummy)]++;
+                 if (output) writeposet(poset,punktzahl);
+               }
              }
      } /* else nauty... */
      } /* else mit Heuristik... */
@@ -1359,8 +1457,8 @@ static void add_point (int level, int do_nauty, graph *last_nbs, graph maxpoints
   int nautylab[MAXN], nautyptn[MAXN];
   graph *local_orbitnumber;
   int i, j, l, test, test2, merke, nr;
-  int newlevel=0;
-  graph dummy, dummy2, dummymax, *run, *ende, *local_subsets, *local_nbs;
+  // int newlevel=0;   BDM
+  graph dummy, dummy2, dummymax, *run, *local_subsets, *local_nbs;
   setword good_vertices;
   boolean accept;
 
@@ -1427,7 +1525,7 @@ if (points_on_level[level]==0)
               if (ISELEMENT(&dummy2,merke)) previous_nbs=jump[l][merke];
               else
                 { 
-                  ende=jump[l][merke];
+                  // ende=jump[l][merke]; BDM
                   for (;*previous_nbs!=0;previous_nbs++)
                     if ((dummy2 & *previous_nbs)==0) /* Nur wenn der Schnitt leer ist, ist es
                                                         eine moegliche Nachbarschaft */
@@ -1506,7 +1604,7 @@ if (points_on_level[level]==0)
 
 if (points_on_level[level]==0) 
   /* ein neues level -- lab kann neu festgelegt werden */
-  { newlevel=1; 
+  { // newlevel=1;  BDM
     first_point_level[level]=punktzahl;
     local_lab=lab[level]; local_ptn=ptn[level];
     /* zunaechst lab: */
@@ -1771,7 +1869,8 @@ if (points_on_level[level]==0)
 
 /***************************************MAIN*******************************************/
 
-int main(int argc, char *argv[])
+int
+main(int argc, char *argv[])
 
   { int i,j,k,quiet,pruned;
   graph dummy;
@@ -1803,6 +1902,8 @@ int main(int argc, char *argv[])
     }
     else
     if (argv[i][0]=='q') quiet = 1;
+    else
+    if (argv[i][0]=='c') connected = 1;
     else 
     if ((argv[i][0]=='m') && isdigit(argv[i+1][0]) &&  isdigit(argv[i+2][0]))
       { i++; rest=atoi(argv[i]); i++; mod=atoi(argv[i]); }
@@ -1813,7 +1914,11 @@ int main(int argc, char *argv[])
   if (sizeof(unsigned long int)<4) { fprintf(stderr,">E sizeof(unsigned long int) should be at least 4\n");
                                      exit(1); }
 
-  if (!quiet) { for (i=0;i<argc;i++) fprintf(stderr,"%s ",argv[i]); fprintf(stderr,"\n"); }
+  if (!quiet)
+  { fprintf(stderr,">A ");
+    for (i=0;i<argc;i++) fprintf(stderr,"%s ",argv[i]);
+    fprintf(stderr,"\n");
+  }
 
   time0 = CPUTIME;
 
@@ -1890,15 +1995,14 @@ for (i=0;i<=MAXGRAPH;i++)
         { poset[i]=0; ADDELEMENT(all_points_up_to,i); }
       points_on_level[0]=punktzahl=maxpunktzahl; 
       minmaxline=minmax_counter[punktzahl];
-      anzahl_posets++;
-      punkte_letztes_level[maxpunktzahl]++;
-      anzahl_level[0]++;
-      relations[0]++;
-      minmaxline[punktzahl]++;
-#ifndef COUNT
-             if (output)
-               { aufschreiben(); }
-#endif
+      if (!connected || punktzahl == 1)
+      { anzahl_posets++;
+        punkte_letztes_level[maxpunktzahl]++;
+        anzahl_level[0]++;
+        relations[0]++;
+        minmaxline[punktzahl]++;
+        if (output) writeposet(poset,punktzahl);
+      }
     }
 
     time1 = CPUTIME;
@@ -1906,22 +2010,29 @@ for (i=0;i<=MAXGRAPH;i++)
 if (!quiet)
 {
 fprintf(stderr,"\nPosets with  1 point on the last level:  %lld\n",punkte_letztes_level[1]);
-  for (i=2; i<=maxpunktzahl; i++) fprintf(stderr,"Posets with %2d points on the last level: %lld\n",i,punkte_letztes_level[i]);
+  for (i=2; i<=maxpunktzahl; i++)
+    if (punkte_letztes_level[i] > 0)
+      fprintf(stderr,"Posets with %2d points on the last level: %lld\n",i,punkte_letztes_level[i]);
   fprintf(stderr,"\n");
   fprintf(stderr,"Posets with  1 level:  %lld\n",anzahl_level[0]);
-  for (i=2; i<=maxpunktzahl; i++) fprintf(stderr,"Posets with %2d levels: %lld\n",i,anzahl_level[i-1]);
+  for (i=2; i<=maxpunktzahl; i++)
+    if (anzahl_level[i-1] > 0)
+      fprintf(stderr,"Posets with %2d levels: %lld\n",i,anzahl_level[i-1]);
+
   fprintf(stderr,"nauty counts: %lld %lld %lld %lld %lld\n",nauty_count1,nauty_count2,nauty_count3,nauty_count4,nauty_count5);
 
   fprintf(stderr,"\n");
   fprintf(stderr,"Nontrivial relations | posets\n");
   for (i=0; i<=(maxpunktzahl*(maxpunktzahl-1))/2; i++)
-    fprintf(stderr,"r(%d)=  %lld\n",i,relations[i]);
+    if (relations[i] > 0)
+      fprintf(stderr,"r(%d)=  %lld\n",i,relations[i]);
 
   fprintf(stderr,"\n");
   fprintf(stderr,"minimal points | maximal points | posets\n");
   for (i=1; i<=maxpunktzahl;i++)
     for (j=1; j<=maxpunktzahl;j++)
-      fprintf(stderr,"p(%d,%d)=  %lld\n",i,j,minmax_counter[i][j]);
+      if (minmax_counter[i][j] > 0)
+        fprintf(stderr,"p(%d,%d)=  %lld\n",i,j,minmax_counter[i][j]);
 }
 
 #ifdef POSET_SUMMARY
@@ -1934,11 +2045,12 @@ fprintf(stderr,"\nPosets with  1 point on the last level:  %lld\n",punkte_letzte
   pruned=0;
 #endif
   if (pruned)
-    fprintf(stderr,">Z %lld posets generated, %lld written; %.2f sec\n",
-           anzahl_posets,written_posets,time1-time0);
+    fprintf(stderr,">Z %lld %sposets generated, %lld written; %.2f sec\n",
+           anzahl_posets,(connected?"connected ":""),written_posets,time1-time0);
   else
-    fprintf(stderr,">Z %lld posets %s; %.2f sec\n",
-           anzahl_posets,(output?"written":"generated"),time1-time0);
+    fprintf(stderr,">Z %lld %sposets %s; %.2f sec\n",
+           anzahl_posets,(connected?"connected ":""),
+           (output?"written":"generated"),time1-time0);
 
   exit(0);
 }

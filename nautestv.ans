@@ -28,5 +28,5 @@
           2 graphs : echrom=6; class=2; connect=1; econnect=1
          12 graphs : echrom=7; class=2; connect=0; econnect=0
           5 graphs : echrom=7; class=2; connect=1; econnect=1
- 38884 graphs altogether; cpu=0.09 sec
->A ./countg --NNAGGG
+ 38884 graphs altogether; cpu=0.08 sec
+>A ./countg --NN,A,G,GG

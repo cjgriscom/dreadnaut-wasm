@@ -14,9 +14,9 @@
 *   numaac      <w> # accepted non-root nodes in the search tree             *
 *                                                                            *
  ****************************************************************************/
-//Just the nodes above or on the SL will be generated. The children of nodes oh the SL won't be investigated or generated.
+/*Just the nodes above or on the SL will be generated. The children of nodes oh the SL won't be investigated or generated.*/
 #define MAXN 28
-#define LEV1 2         //if (nmax<= threshold) then (SplitLevel = nmax-LEV1 ), otherwise (SplitLevel = LEV2).
+#define LEV1 2         /*if (nmax<= threshold) then (SplitLevel = nmax-LEV1 ), otherwise (SplitLevel = LEV2).*/
 #define LEV2 15
 #define threshold 16
 #define WORDSIZE 64
@@ -29,7 +29,7 @@
 
 static void (*outproc)(FILE*, graph*, int);
 #ifdef OUTPROC
-extern void OUTPROC(FILE*, graph*, int);
+void OUTPROC(FILE*, graph*, int);
 #endif
 
 static DEFAULTOPTIONS_GRAPH(options);
@@ -65,12 +65,12 @@ boolean     header;                         /* presence of -h */
 static int  connec;                          /* 1 for -c, 2 for -C, 0 for neither */
 boolean     connec1;                        /* presence of -c */
 boolean     connec2;                        /* presence of -C */
-boolean     canonise;                       /* presence of -l */  //????????
+boolean     canonise;                       /* presence of -l */  
 
 
 typedef struct
 {
-        int first;
+    int first;
     int sec;
     setword fn;
     setword sn;
@@ -81,18 +81,18 @@ typedef struct
 
 typedef struct
 {
-        int first;
+    int first;
     int sec;
     int multp;
 } pairstruct;
 
 typedef struct
 {
-        int base;
-        int first1;
-        int sec1;
-        int first2;
-        int sec2;
+    int base;
+    int first1;
+    int sec1;
+    int first2;
+    int sec2;
 } dovistruct;
 
 typedef   enum
@@ -109,7 +109,6 @@ edgestruct  *pedge;
 setword     active;
 boolean     goodret;
 static int  nmax, m, code, numcells, mod, res, splitlevel, splitcount;
-//TMP static splitlevel,splitcount,mod,res;    ??????TMP?
 static void    extend(int, graph *, edgestruct *, pairstruct *, int, int * , int *, setword *, int *, boolean );
 static int     init_refinex( int *, int *, int *, set *, int);
 static void     refinex( graph *, int *, int *, int , int *, int *, set *, boolean , int *, int , int );
@@ -226,8 +225,8 @@ static void
 extend(int n, graph *g, edgestruct *edge, pairstruct *epair, int numpair,
    int *epairorbit, int *multar, setword *zar, int *col00w, boolean connectflag)
 {
-    int   vm1, vm2, vm3, vm4, vt1, vt2, vt3, vt4, c, b, mcol1,
-          tcol, got_one, i, j, numpair1, numdovi, maxdovi, i1, j1, i2, j2,
+    int   vm1, vm2, vm3, vm4, vt1, vt2, vt3, vt4, c, b, mcol1=0,
+          tcol, got_one, i, j, numpair1, numdovi, maxdovi=0, i1, j1, i2, j2,
           temp, mult, multm, rely, numedge, dcol, dcolp, e1, e2;
     int   firsttime[MAXN], firsttimey[MAXN], multar1[MAXN],
           col00[MAXN], col00w1[MAXN], doviorbit[3*MAXN],
@@ -241,16 +240,14 @@ extend(int n, graph *g, edgestruct *edge, pairstruct *epair, int numpair,
     graph       gi[MAXN];
     dovistruct  dovi[3*MAXN];
     dovistruct  dovimax;
-    register    setword    gi1, gi2, gj1, gj2;
-    boolean     conf;
+    setword    gi1, gi2, gj1, gj2;
+    boolean     conf=TRUE;
 
-    /////////////////////////////////////////////////////////////////////////
     if( n == splitlevel )
     {
         if (splitcount-- != 0) return;
         splitcount = mod - 1;
     }
-    /////////////////////////////////////////////////////////////////////////
     for( c = 1; c < numpair; c++)
     {
         if( epairorbit[c] == c  )
@@ -581,7 +578,7 @@ extend(int n, graph *g, edgestruct *edge, pairstruct *epair, int numpair,
 
                         options.userautomproc = userautom2;
                         options.getcanon = TRUE;
-                        options.defaultptn = FALSE;   ///// 1.badan in FALSE SHAVAD, 2.COULR AVALI TARIF SHAD, 3.lab o ptn initialize shavand
+                        options.defaultptn = FALSE;   /* 1.badan in FALSE SHAVAD, 2.COULR AVALI TARIF SHAD, 3.lab o ptn initialize shavand */
 
                         nauty( g, lab, ptn, NULL, orbits, &options, &stats, workspace, 50, m, n+1, gi);
 
@@ -700,7 +697,6 @@ extend(int n, graph *g, edgestruct *edge, pairstruct *epair, int numpair,
                             for (e2 = e1+1; e2 < numedge; e2++)
                             {
                                 antipair[e1][e2] = 0;
-                                // while( (i1 == edge1[e2].first)    &&    (e2 < numedge) )
                                 while( e2 < numedge   &&   (i1 == edge1[e2].first) )
                                 {
                                     e2++;
@@ -888,9 +884,9 @@ extend(int n, graph *g, edgestruct *edge, pairstruct *epair, int numpair,
 
 
 
-                }  // end if col..= rej..
+                }  /* end if col..= rej.. */
 
-            }  // end else >>> (if namx ==n+1)
+            }  /* end else >>> (if namx ==n+1) */
 
             g[vm1] ^= bit[n] | bit[vm2];
             g[vm2] ^= bit[n] | bit[vm1];
@@ -898,9 +894,9 @@ extend(int n, graph *g, edgestruct *edge, pairstruct *epair, int numpair,
             g[vm4] ^= bit[n] | bit[vm3];
             g[n] = 0;
 
-        }  // end if c..
+        }  /* end if c.. */
 
-    } //end for c..
+    } /*end for c.. */
 
 }
 
@@ -968,7 +964,7 @@ static void
 userautom2(int count, int *perm, int *orbits, int numorbits, int stabvertex, int n)
 {
     int doviperm[3*MAXN];
-    int             vn1, vn2, vn3, vn4, vnb, i, etmp;
+    int vn1, vn2, vn3, vn4, vnb, i, etmp;
 
     for (i = 0; i < *pCNT; i++)
     {
@@ -1108,32 +1104,32 @@ userautom3( int count, int *perm, int *orbits, int numorbits, int stabvertex, in
 static int
 init_refinex( int *clr, int *lb, int *p, set *active, int n)
 {
-    register int i, j, ci, ncell;
+    int i, j, ci, ncell;
 
-        ncell = 1;
-        *active = bit[0];
+    ncell = 1;
+    *active = bit[0];
     for (i = 0; i < n; i++)
-        {
+    {
         ci = clr[i];
         for (j = i-1; (j >= 0)  &&    (clr[lb[j]] > ci) ; j--)
             lb[j+1] = lb[j];
         lb[j+1] = i;
     }
-        lb[n] = n;
+    lb[n] = n;
     for (i = 0; i < n; i++)
-        {
+    {
         if( clr[lb[i]] != clr[lb[i+1]] )
-                {
-                        p[i] = 0;
-                        ncell++;
-                        *active |= bit[i+1];
-                }
-                else
-                        p[i] = 1;
+            {
+                p[i] = 0;
+                ncell++;
+                *active |= bit[i+1];
+            }
+            else
+                    p[i] = 1;
 
     }
-        p[n] = 0;
-        return ncell;
+    p[n] = 0;
+    return ncell;
 }
 
 /*****************************************************************************
@@ -1283,9 +1279,8 @@ refinex(graph *g, int *lab, int *ptn, int level, int *numcells, int *count,
 
 int main(int argc, char *argv[])
 {
-    //argc = #entered arguments by the user + 1;
-    int  n, cntr, numpair, numedge, i, j, i1, i2, j1, j2, multm, e1, e2, argnum, sw; //char  sw??
-    int         multar[MAXN], col00w[MAXN], epairorbit[MAXP], lab[MAXN], ptn[MAXN], orbits[MAXN];
+    int  n, cntr, numpair, numedge, i, j, i1, i2, j1, j2, multm, e1, e2, argnum, sw; 
+    int  multar[MAXN], col00w[MAXN], epairorbit[MAXP], lab[MAXN], ptn[MAXN], orbits[MAXN];
     int  antipair[MAXE][MAXE], antiedge[MAXN][MAXN];
     setword  x;
     pairstruct  epair[MAXP];
@@ -1298,7 +1293,7 @@ int main(int argc, char *argv[])
     char        msg[201];
 
     HELP; PUTVERSION;
-    nauty_check(WORDSIZE,1,MAXN,NAUTYVERSIONID);   ////?????
+    nauty_check(WORDSIZE,1,MAXN,NAUTYVERSIONID);   
 
     if( MAXN > WORDSIZE )
     {
@@ -1309,7 +1304,7 @@ int main(int argc, char *argv[])
     badargs = FALSE;
     connec1 = connec2 = FALSE;
     nooutput = FALSE;
-    canonise = FALSE;  //?????
+    canonise = FALSE;  
     graph6 = FALSE;
     sparse6 = FALSE;
     header = FALSE;
@@ -1404,7 +1399,7 @@ int main(int argc, char *argv[])
         res = 0;
     }
    /* else if (argnum == 5 || argnum > 6)
-        badargs = TRUE;*/ // argnum will never exceeds 1 here andeven in genbg it never exceeds 2!
+        badargs = TRUE;*/ 
 
 
     if (badargs)
@@ -1451,7 +1446,6 @@ int main(int argc, char *argv[])
         else CATMSG1(">A %s",argv[0]);
 
         CATMSG1(" n = %d", nmax);
-   // if (connec) CATMSG0(connec2 ? "C" : connec1 ? "c" : "",);
         if (connec2) CATMSG0(" C"); else if (connec1) CATMSG0(" c");
         if (mod > 1) CATMSG2(" class= %d/%d", res, mod);
         CATMSG0("\n");
@@ -1462,13 +1456,13 @@ int main(int argc, char *argv[])
     if (header)
     {
         if (SPARSE6)
-            writeline(outfile,SPARSE6_HEADER);        // No enter after the header is ok?
+            writeline(outfile,SPARSE6_HEADER);
         else
             writeline(outfile,GRAPH6_HEADER);
         fflush(outfile);
     }
 
- //   if (mod > 1 && nmax > 10)
+ /*   if (mod > 1 && nmax > 10) */
     if( mod > 1 )
     {
         if( nmax <= threshold )
@@ -1481,7 +1475,7 @@ int main(int argc, char *argv[])
     {
         splitlevel = -1;
         mod = 1;
-        res = 0;  // narjess for the sake of n>splitlevel (below)
+        res = 0;  /* narjess for the sake of n>splitlevel (below) */
     }
 
     timebefore = CPUTIME;
@@ -1491,7 +1485,7 @@ int main(int argc, char *argv[])
     for(cntr = 0; cntr < NUMIRRED; cntr++)
     {
         n = graphsize(irred[cntr]);
-        //////////////////////////////////////////////////////////////////
+
         if( n == splitlevel  )
         {
             if (splitcount-- != 0) continue;
@@ -1504,7 +1498,6 @@ int main(int argc, char *argv[])
         {
             if ( gotmr && res ) continue;
         }
-        /////////////////////////////////////////////////////////////////////////
 
 
         if( n < nmax )

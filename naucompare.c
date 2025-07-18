@@ -25,11 +25,13 @@ static char* special[] =   /* Make sure to use \n */
     "Dreadnaut version %*f (%*d bits).\n",
     "cpu time = %*f seconds\n",
     "canupdates=%d; cpu time = %*f seconds\n",
+    "Mode=%s m=%*d n=%d labelorg=%d arcs=%d options=(%s))\n",
     "Mode=%s m=%*d n=%d labelorg=%d edges=%d options=(%s))\n",
     "group time: %*f, %*f, %*f, group order time: %*f;%\n",
     ">Z %d graphs generated in %*f sec\n",
     ">Z %d graphs labelled from %s to %s in %*f sec.\n",
     "%d graphs altogether; cpu=%*f sec\n",
+    ">Z %d graphs altogether; %*f sec\n",
     "group time: %*f,%*f,%*f, order:%*f total:%*f "
        "(Schreier fails: %d); exp_paths time:%*f; aut_check time:%*f\n",
     "%d cell; code = %d; cpu time = %*f seconds\n",

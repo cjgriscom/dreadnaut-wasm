@@ -1,16 +1,17 @@
-/* nbrhoodg.c  version 1.1; B D McKay, Apr 2018. */
+/* nbrhoodg.c  version 2.0; B D McKay, Feb 2025. */
 
 #define USAGE "nbrhoodg [-lq] [-c|-C] [-d#|d#:#] [-v#|-v#:#] [infile [outfile]]"
 
 #define HELPTEXT \
-" Extract neighbours of vertices of a graph.\n\
+" Extract neighbourhoods of vertices of a graph.\n\
 \n\
     The output file has a header if and only if the input file does.\n\
-    No isomorph reduction is done.\n\
+    No isomorph reduction is done. No null graphs are written.\n\
 \n\
     -l  Canonically label outputs (default is same labelling as input)\n\
     -C  Extract closed neighbourhoods instead.\n\
     -c  Extract non-neighbourhoods instead.\n\
+    -D# Extract neighbourhoods out to distance # (implies -C)\n\
     -d# -d#:# Only include vertices with original degree in the given range\n\
     -v# -v#:# Only include vertices with these vertex numbers (first is 0).\n\
         No empty graphs are output.\n\
@@ -26,20 +27,78 @@ static nauty_counter nout;
 static int outcode;
 static boolean digraph,dolabel;
 
+static int
+list_dist(graph *g, int m, int n, int v, int *perm,
+                long mindist, long maxdist, boolean compl)
+/* Put in perm[0..] the vertices at distance mindist..maxdist from v.
+   If compl=TRUE, use the complement of that set.
+   Assumes maxdist >= mindist. Returns the number of vertices. */
+{
+    int i,head,tail,w,dis,nperm;
+    set *gw;
+#if MAXN
+    int queue[MAXN],dist[MAXN];
+#else
+    DYNALLSTAT(int,queue,queue_sz);
+    DYNALLSTAT(int,dist,dist_sz);
+#endif
+
+    if (n == 0) return 0;
+
+#if !MAXN
+    DYNALLOC1(int,queue,queue_sz,n,"nbrhoodg");
+    DYNALLOC1(int,dist,dist_sz,n,"nbrhoodg");
+#endif
+
+    for (i = 0; i < n; ++i) dist[i] = NAUTY_INFINITY;
+
+    queue[0] = v;
+    dist[v] = dis = 0;
+
+    head = 0;
+    tail = 1;
+    while (dis <= maxdist && tail < n && head < tail)
+    {
+        w = queue[head++];
+        gw = GRAPHROW(g,w,m);
+        for (i = -1; (i = nextelement(gw,m,i)) >= 0;)
+        {
+            if (dist[i] == NAUTY_INFINITY)
+            {
+                dis = dist[i] = dist[w] + 1;
+                queue[tail++] = i;
+            }
+        }
+    }
+
+    nperm = 0;
+    if (compl)
+    {
+        for (i = 0; i < n; ++i)
+            if (dist[i] < mindist || dist[i] > maxdist) perm[nperm++] = i;
+    }
+    else
+    {
+        for (i = 0; i < n; ++i)
+            if (dist[i] >= mindist && dist[i] <= maxdist) perm[nperm++] = i;
+    }
+
+    return nperm;
+}
+
 /**************************************************************************/
 
 static void
 getsubgraph(graph *gin, int *perm, int nperm, graph *gout, int m, int n)
 /* Makes a subgraph gin<perm[0..nperm-1]> */
 {
-    long li;
     int i,j,k;
     int newm;
     set *gi,*wgi;
 
     newm = SETWORDSNEEDED(nperm);
 
-    for (li = (long)newm * (long)nperm; --li >= 0;) gout[li] = 0;
+    EMPTYGRAPH(gout,newm,nperm);
 
     for (i = 0, gi = (set*)gout; i < nperm; ++i, gi += newm)
     {
@@ -59,13 +118,14 @@ main(int argc, char *argv[])
 {
     char *infilename,*outfilename;
     FILE *infile;
-    boolean badargs,quiet,dswitch,vswitch,cswitch,Cswitch;
+    boolean badargs,quiet,dswitch,vswitch,cswitch,Cswitch,Dswitch;
     int i,j,m,n,v,argnum;
     int codetype;
     graph *g,*gq;
     nauty_counter nin;
     char *arg,sw;
     setword *gv;
+    long mindist,maxdist;
     long mindeg,maxdeg;
     long minvert,maxvert;
     int degv,msub,nsub;
@@ -83,7 +143,8 @@ main(int argc, char *argv[])
 
     infilename = outfilename = NULL;
     badargs = FALSE;
-    Cswitch = cswitch = vswitch = dswitch = quiet = FALSE;
+    Cswitch = cswitch = vswitch = dswitch = Dswitch = quiet = FALSE;
+    mindist = maxdist = 0;
 
     argnum = 0;
     badargs = FALSE;
@@ -100,6 +161,7 @@ main(int argc, char *argv[])
                 else SWBOOLEAN('q',quiet)
                 else SWBOOLEAN('c',cswitch)
                 else SWBOOLEAN('C',Cswitch)
+                else SWRANGE('D',":-",Dswitch,mindist,maxdist,">E nbrhoodg -D")
                 else SWRANGE('v',":-",vswitch,minvert,maxvert,">E nbrhoodg -v")
                 else SWRANGE('d',":-",dswitch,mindeg,maxdeg,">E nbrhoodg -d")
                 else badargs = TRUE;
@@ -114,7 +176,8 @@ main(int argc, char *argv[])
         }
     }
 
-    if (cswitch && Cswitch) gt_abort(">E nbrhoodg: -c and -C are incompatible\n");
+    if (Cswitch && (cswitch || Dswitch))
+        gt_abort(">E nbrhoodg: -C is incompatible with -c and -D\n");
         
     if (badargs)
     {
@@ -129,6 +192,7 @@ main(int argc, char *argv[])
         if (dolabel) fprintf(stderr," -l");
         if (dswitch) fprintf(stderr," -d%ld:%ld",mindeg,maxdeg);
         if (vswitch) fprintf(stderr," -v%ld:%ld",minvert,maxvert);
+        if (Dswitch) fprintf(stderr," -D%ld:%ld",mindist,maxdist);
         if (argnum > 0) fprintf(stderr," %s",infilename);
         if (argnum > 1) fprintf(stderr," %s",outfilename);
         fprintf(stderr,"\n");
@@ -149,6 +213,8 @@ main(int argc, char *argv[])
     if (maxdeg == NOLIMIT) maxdeg = NAUTY_INFINITY;
     if (minvert < 0) minvert = 0;
     if (maxvert == NOLIMIT) maxvert = NAUTY_INFINITY;
+    if (mindist < 0) mindist = 0;
+    if (maxdist == NOLIMIT) maxdist = NAUTY_INFINITY;
 
     if (dolabel) nauty_check(WORDSIZE,1,1,NAUTYVERSIONID);
 
@@ -192,11 +258,16 @@ main(int argc, char *argv[])
         for (v = minvert, gv = GRAPHROW(g,minvert,m);
                               v < n && v <= maxvert; ++v, gv += m)
         {
-            degv = 0;
+            if (digraph) degv = 0;
+            else degv = (ISELEMENT(gv,v) != 0);
             for (i = 0; i < m; ++i) degv += POPCOUNT(gv[i]);
             if (degv < mindeg || degv > maxdeg) continue;
 
-            if (Cswitch)
+            if (Dswitch)
+            {
+                nsub = list_dist(g,m,n,v,perm,mindist,maxdist,cswitch);
+            }
+            else if (Cswitch)
             {
                 perm[0] = v;
                 nsub = 1;

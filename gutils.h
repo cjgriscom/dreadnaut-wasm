@@ -7,57 +7,61 @@
 extern "C" {
 #endif
 
-extern void degstats(graph*,int,int,
+void degstats(graph*,int,int,
                      unsigned long*,int*,int*,int*,int*,boolean*);
-extern void degstats2(graph*,boolean,int,int,unsigned long*,int*l,
+void degstats2(graph*,boolean,int,int,unsigned long*,int*l,
      int*,int*,int*,int*, int*, int*,int*,int*, boolean*);
-extern void degstats3(graph*,int,int,
+void degstats3(graph*,int,int,
                      unsigned long*,int*,int*,int*,int*,int*);
-extern void diamstats(graph*,int,int,int*,int*);
-extern void find_dist(graph*,int,int,int,int*);
-extern void find_dist2(graph*,int,int,int,int,int*);
-extern int numcomponents(graph*,int,int);
-extern int numcomponents1(graph*,int);
-extern int girth(graph*,int,int);
-extern boolean isbiconnected1(graph*,int);
-extern boolean isbiconnected(graph*,int,int);
-extern boolean isbipartite(graph*,int,int);
-extern int bipartiteside(graph*,int,int);
-extern boolean twocolouring(graph*,int*,int,int);
-extern boolean isconnected1(graph*,int);
-extern boolean isconnected(graph*,int,int);
-extern boolean issubconnected(graph*,set*,int,int); 
-extern long maxcliques(graph*,int,int);
-extern int maxcliquesize(graph*,int,int);
-extern int maxindsetsize(graph*,int,int);
-extern void sources_sinks(graph*,int,int,int*,int*);
+void diamstats(graph*,int,int,int*,int*);
+void find_dist(graph*,int,int,int,int*);
+void find_dist2(graph*,int,int,int,int,int*);
+int numcomponents(graph*,int,int);
+int numcomponents1(graph*,int);
+int girth(graph*,int,int);
+boolean isbiconnected1(graph*,int);
+boolean isbiconnected(graph*,int,int);
+boolean isbipartite(graph*,int,int);
+int bipartiteside(graph*,int,int);
+boolean twocolouring(graph*,int*,int,int);
+boolean isconnected1(graph*,int);
+boolean isconnected(graph*,int,int);
+boolean issubconnected(graph*,set*,int,int); 
+long maxcliques(graph*,int,int);
+int maxcliquesize(graph*,int,int);
+int maxindsetsize(graph*,int,int);
+void sources_sinks(graph*,int,int,int*,int*);
 
-extern long digoncount(graph*,int,int);
-extern int loopcount(graph*,int,int);
-extern long pathcount1(graph*,int,setword,setword);
-extern long cyclecount1(graph*,int);
-extern long cyclecount(graph*,int,int);
-extern long indpathcount1(graph*,int,setword,setword);
-extern long indcyclecount1(graph*,int);
-extern long indcyclecount(graph*,int,int);
-extern void commonnbrs(graph*,int*,int*,int*,int*,int,int);
-extern void contract1(graph*,graph*,int,int,int);
-extern int cstarcontent(graph*,int,int);
-extern long numtriangles1(graph*,int);
-extern long numtriangles(graph*,int,int);
-extern long numtriangles1(graph*,int);
-extern long numind3sets(graph*,int,int);
-extern long numind3sets1(graph*,int);
-extern long numdirtriangles(graph*,int,int);
-extern long numdirtriangles1(graph*,int);
-extern long numsquares(graph*,int,int);
-extern long numdiamonds(graph*,int,int);
-extern long numpentagons(graph*,int,int);
-extern void delete1(graph*,graph*,int,int);
-extern int conncontent(graph*,int,int);
-extern boolean stronglyconnected(graph*,int,int);
-extern int ktreeness1(graph*,int);
-extern int ktreeness(graph*,int,int);
+long digoncount(graph*,int,int);
+int loopcount(graph*,int,int);
+long pathcount1(graph*,int,setword,setword);
+long cyclecount1(graph*,int);
+long cyclecount1lim(graph*,long,int);
+long cyclecount(graph*,int,int);
+long cyclecountlim(graph*,long,int,int);
+long indpathcount1(graph*,int,setword,setword);
+long indcyclecount1(graph*,int);
+long indcyclecount(graph*,int,int);
+void commonnbrs(graph*,int*,int*,int*,int*,int,int);
+void contract1(graph*,graph*,int,int,int);
+int cstarcontent(graph*,int,int);
+long numtriangles1(graph*,int);
+long numtriangles(graph*,int,int);
+long numtriangles1(graph*,int);
+long numind3sets(graph*,int,int);
+long numind3sets1(graph*,int);
+long numdirtriangles(graph*,int,int);
+long numdirtriangles1(graph*,int);
+long numsquares(graph*,int,int);
+long numdiamonds(graph*,int,int);
+long numpentagons(graph*,int,int);
+long numhexagons1(graph*,int);
+long numhexagons(graph*,int,int);
+void delete1(graph*,graph*,int,int);
+int conncontent(graph*,int,int);
+boolean stronglyconnected(graph*,int,int);
+int ktreeness1(graph*,int);
+int ktreeness(graph*,int,int);
 
 /* extern int diameter_sg(sparsegraph*,int*,int*); */
 

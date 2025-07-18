@@ -70,11 +70,11 @@ static long long totallab;
  */
 
 #ifdef OUTPROC
-extern void OUTPROC(FILE*,graph*,int*,int,int);
+void OUTPROC(FILE*,graph*,int*,int,int);
 #endif
 
 #ifdef SUMMARY
-extern void SUMMARY(void);
+void SUMMARY(void);
 #endif
 
 /**************************************************************************/
@@ -651,10 +651,10 @@ main(int argc, char *argv[])
     if (cswitch && mswitch && numcols != collen)
         gt_abort(">E vcolg: -m and -c disagree on number of colours\n");
 
+    totcols = 0;
     if (cswitch)
     {
         numcols = collen;
-        totcols = 0;
         for (i = 0; i < numcols; ++i)
             if (colcount[i] < 0)
                 gt_abort(">E vcolg: negative counts not allowed for -c\n");

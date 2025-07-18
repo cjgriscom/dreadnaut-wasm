@@ -13,7 +13,8 @@
     -n# the number of new vertices (default 1)\n\
     -j# -j#:# join a new vertex to # old vertices in all possible ways\n\
     -e# -e#:# use all joins that give the new graphs # edges\n\
-          (-j, -e are each incompatible with -n)\n\
+          (-j, -e, -D are each incompatible with -n)\n\
+    -D# upper bound on the maximum (out)degree of the output graphs\n\
     -i  for a digraph, edges go towards the old vertices\n\
     -o  for a digraph, edges go away from the old vertices\n\
           (-i is the default if neither -i nor -o is given)\n\
@@ -56,7 +57,8 @@ gotone(graph *g, int m, int n)
 /*************************************************************************/
 
 static void
-dojoins(graph *g, int lastedge, int togomin, int togomax, int m, int n)
+dojoins(graph *g, set *forbidden,
+        int lastedge, int togomin, int togomax, int m, int n)
 /* n is the new size */
 {
     int i;
@@ -69,15 +71,15 @@ dojoins(graph *g, int lastedge, int togomin, int togomax, int m, int n)
 
     for (i = lastedge + 1; i < n - togomin && i < n-1; ++i)
     {
+        if (ISELEMENT(forbidden,i)) continue;
         ADDONEEDGE(g,i,n-1,m);
-        dojoins(g,i,togomin-1,togomax-1,m,n);
+        dojoins(g,forbidden,i,togomin-1,togomax-1,m,n);
         DELONEEDGE(g,i,n-1,m);
     }
 }
 
-
 static void
-dojoins_dir(graph *g, int lastedge, int togomin, int togomax,
+dojoins_dir(graph *g, set *forbidden, int lastedge, int togomin, int togomax,
                         boolean in, boolean out, int m, int n)
 /* n is the new size */
 {
@@ -93,8 +95,9 @@ dojoins_dir(graph *g, int lastedge, int togomin, int togomax,
     {
         for (i = lastedge + 1; i < n - togomin && i < n-1; ++i)
         {
+            if (ISELEMENT(forbidden,i)) continue;
             ADDONEEDGE(g,i,n-1,m);
-            dojoins_dir(g,i,togomin-1,togomax-1,in,out,m,n);
+            dojoins_dir(g,forbidden,i,togomin-1,togomax-1,in,out,m,n);
             DELONEEDGE(g,i,n-1,m);
         }
     }
@@ -103,7 +106,7 @@ dojoins_dir(graph *g, int lastedge, int togomin, int togomax,
         for (i = lastedge + 1; i < n - togomin && i < n-1; ++i)
         {
             ADDONEARC(g,n-1,i,m);
-            dojoins_dir(g,i,togomin-1,togomax-1,in,out,m,n);
+            dojoins_dir(g,forbidden,i,togomin-1,togomax-1,in,out,m,n);
             DELONEARC(g,n-1,i,m);
         }
     }
@@ -111,8 +114,9 @@ dojoins_dir(graph *g, int lastedge, int togomin, int togomax,
     {
         for (i = lastedge + 1; i < n - togomin && i < n-1; ++i)
         {
+            if (ISELEMENT(forbidden,i)) continue;
             ADDONEARC(g,i,n-1,m);
-            dojoins_dir(g,i,togomin-1,togomax-1,in,out,m,n);
+            dojoins_dir(g,forbidden,i,togomin-1,togomax-1,in,out,m,n);
             DELONEARC(g,i,n-1,m);
         }
     }
@@ -121,8 +125,10 @@ dojoins_dir(graph *g, int lastedge, int togomin, int togomax,
 /*************************************************************************/
 
 static void
-addvertices(graph *g, int extras, boolean cone, boolean clique, int m, int n)
-/* n is the new size */
+addvertices(graph *g, set *forbidden,
+            int extras, boolean cone, boolean clique, int m, int n)
+/* n is the new size.
+   Note that forbidden will be empty unless extras=1. */
 {
     int i,j,oldn;
 
@@ -132,7 +138,7 @@ addvertices(graph *g, int extras, boolean cone, boolean clique, int m, int n)
     {
         for (j = oldn; j < n; ++j)
         for (i = 0; i < oldn; ++i)
-            ADDONEEDGE(g,i,j,m);
+            if (!ISELEMENT(forbidden,i)) ADDONEEDGE(g,i,j,m);
     }
 
     if (clique)
@@ -146,9 +152,10 @@ addvertices(graph *g, int extras, boolean cone, boolean clique, int m, int n)
 }
 
 static void
-addvertices_dir(graph *g, int extras, boolean in, boolean out,
-                           boolean cone, boolean clique, int m, int n)
-/* n is the new size */
+addvertices_dir(graph *g, set *forbidden, int extras, boolean in,
+                boolean out, boolean cone, boolean clique, int m, int n)
+/* n is the new size.
+   Note that forbidden will be empty unless extras=1. */
 {
     int i,j,oldn;
 
@@ -160,7 +167,7 @@ addvertices_dir(graph *g, int extras, boolean in, boolean out,
         for (i = 0; i < oldn; ++i)
         {
             if (in) ADDONEARC(g,j,i,m);
-            if (out) ADDONEARC(g,i,j,m);
+            if (out && !ISELEMENT(forbidden,i)) ADDONEARC(g,i,j,m);
         }
     }
 
@@ -176,11 +183,11 @@ addvertices_dir(graph *g, int extras, boolean in, boolean out,
 
 /*************************************************************************/
 
-static long
+static long long
 edgenumber(graph *g, boolean digraph, int m, int n)
 /* Find the number of edges */
 {
-    long loops,count;
+    long long loops,count;
     graph *gi;
     int i,j;
 
@@ -195,6 +202,27 @@ edgenumber(graph *g, boolean digraph, int m, int n)
     else         return (count + loops) / 2;
 }
 
+static boolean
+findforbidden(graph *g, int Dmax, set *forbidden, int m, int n)
+/* If any out-degrees are >Dmax, return FALSE.  Otherwise, set
+   forbidden to those vertices with out-degree Dmax and return TRUE. */
+{
+    int i,j,d;
+    graph *gi;
+
+    EMPTYSET(forbidden,m);
+    for (i = 0, gi = g; i < n; ++i, gi += m)
+    {
+        d = 0;
+        for (j = 0; j < m; ++j) d += POPCOUNT(gi[j]);
+        if (d > Dmax)
+            return FALSE;
+        else if (d == Dmax)
+            ADDELEMENT(forbidden,i);
+    }
+    return TRUE;
+}
+
 /*************************************************************************/
 
 int
@@ -202,10 +230,11 @@ main(int argc, char *argv[])
 {
     char *infilename,*outfilename;
     FILE *infile;
-    boolean badargs,quiet,in,out;
+    boolean badargs,quiet,in,out,Dswitch;
     boolean cswitch,kswitch,nswitch,jswitch,eswitch;
-    int extras,dmin,dmax;
-    long joinmin,joinmax,emin,emax,ne;
+    int extras,dmin,dmax,Dmax;
+    long joinmin,joinmax,emin,emax;
+    long long ne;
     int i,j,m,n,m2,n2,argnum;
     int codetype;
     graph *g,*gi,*gpi;
@@ -214,14 +243,17 @@ main(int argc, char *argv[])
     double t;
 #if MAXN
     graph gplus[MAXN*MAXM];
+    set forbidden[MAXM];
 #else
     DYNALLSTAT(graph,gplus,gplus_sz);
+    DYNALLSTAT(set,forbidden,forbidden_sz);
 #endif
 
     HELP; PUTVERSION;
 
     infilename = outfilename = NULL;
-    dolabel = quiet = nswitch = jswitch = cswitch = kswitch = eswitch = FALSE;
+    dolabel = quiet = nswitch = jswitch = cswitch = FALSE;
+    Dswitch =  kswitch = eswitch = FALSE;
     in = out = FALSE;
 
     argnum = 0;
@@ -242,6 +274,7 @@ main(int argc, char *argv[])
                 else SWBOOLEAN('i',in)
                 else SWBOOLEAN('o',out)
                 else SWINT('n',nswitch,extras,">E addptg -n")
+                else SWINT('D',Dswitch,Dmax,">E addptg -D")
                 else SWRANGE('j',":-",jswitch,joinmin,joinmax,">E addptg -j")
                 else SWRANGE('e',":-",eswitch,emin,emax,">E addptg -e")
                 else badargs = TRUE;
@@ -264,8 +297,11 @@ main(int argc, char *argv[])
     }
 
     if (!nswitch) extras = 1;
-    if (extras > 1 && (jswitch || eswitch))
-        gt_abort(">E addptg: -e and -j are incompatible with -n\n");
+    if (extras > 1 && (Dswitch || jswitch || eswitch))
+        gt_abort(">E addptg: -e, -j and -D are incompatible with -n\n");
+    if (jswitch && Dswitch && joinmax > Dmax) joinmax = Dmax;
+    if (jswitch && joinmin > joinmax)
+        gt_abort(">E addptg: values of -j and -D are incompatible\n");
 
     if (extras < 0) gt_abort(">E addptg: negative argument for -n\n");
 
@@ -274,6 +310,7 @@ main(int argc, char *argv[])
         fprintf(stderr,">A addptg");
         if (dolabel) fprintf(stderr," -l");
         if (nswitch) fprintf(stderr," -n%d",extras);
+        if (Dswitch) fprintf(stderr," -D%d",Dmax);
         if (jswitch) fprintf(stderr," -j%ld:%ld",joinmin,joinmax);
         if (eswitch) fprintf(stderr," -e%ld:%ld",emin,emax);
         if (cswitch || kswitch || in || out)
@@ -329,11 +366,19 @@ main(int argc, char *argv[])
         nauty_check(WORDSIZE,m2,n2,NAUTYVERSIONID);
 #if MAXN==0
         DYNALLOC2(graph,gplus,gplus_sz,m2,n2,"addptg");
+        DYNALLOC1(set,forbidden,forbidden_sz,m,"addptg");
 #endif
 
         EMPTYSET(gplus,n2*(size_t)m2);
         for (i = 0, gi = g, gpi = gplus; i < n; ++i, gi += m, gpi += m2)
             for (j = 0; j < m; ++j) gpi[j] = gi[j];
+
+        if (Dswitch) 
+        {
+            if (!findforbidden(g,Dmax,forbidden,m,n)) { FREES(g); continue; }
+        }
+        else
+            EMPTYSET(forbidden,m);
 
         if (eswitch || jswitch)
         {
@@ -349,19 +394,24 @@ main(int argc, char *argv[])
                 dmin = (int)(emin-ne > dmin ? emin-ne : dmin);
                 dmax = (int)(emax-ne < dmax ? emax-ne : dmax);
             }
-            if (dmin > dmax) continue;
+            if (Dswitch)
+            {
+                if ((!digraph || !out) && Dmax < dmax) dmax = Dmax;
+            }
+            if (dmin > dmax) { FREES(g); continue; }
 
             if (digraph)
-                dojoins_dir(gplus,-1,dmin,dmax,in,out,m2,n2);
+                dojoins_dir(gplus,forbidden,-1,dmin,dmax,in,out,m2,n2);
             else
-                dojoins(gplus,-1,dmin,dmax,m2,n2);
+                dojoins(gplus,forbidden,-1,dmin,dmax,m2,n2);
         }
         else
         {
             if (digraph)
-                addvertices_dir(gplus,extras,in,out,cswitch,kswitch,m2,n2);
+                addvertices_dir(gplus,forbidden,
+                                extras,in,out,cswitch,kswitch,m2,n2);
             else
-                addvertices(gplus,extras,cswitch,kswitch,m2,n2);
+                addvertices(gplus,forbidden,extras,cswitch,kswitch,m2,n2);
         }
 
         FREES(g);

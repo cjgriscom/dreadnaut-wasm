@@ -25,10 +25,10 @@
 extern "C" {
 #endif
 
-extern void ran_init(unsigned long long);
-extern void ran_init_2(unsigned long long, unsigned long long);
-extern unsigned long long ran_init_time(unsigned long long);
-extern unsigned long long ran_nextran(void);
+void ran_init(unsigned long long);
+void ran_init_2(unsigned long long, unsigned long long);
+unsigned long long ran_init_time(unsigned long long);
+unsigned long long ran_nextran(void);
 
 #ifdef __cplusplus
 }

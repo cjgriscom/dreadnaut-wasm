@@ -338,6 +338,7 @@ main(int argc, char *argv[])
 
     NODIGRAPHSYET(codetype);
 
+    outfile = NULL;
     if (!nowrite)
     {
         if (!outfilename || outfilename[0] == '-')

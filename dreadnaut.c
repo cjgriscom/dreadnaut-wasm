@@ -1,7 +1,7 @@
 /*****************************************************************************
 *                                                                            *
-* This is the main file for dreadnaut() version 2.8, which is a test-bed     *
-*   for nauty() version 2.8 and traces version 2.2.                          *
+* This is the main file for dreadnaut() version 2.9, which is a test-bed     *
+*   for nauty() version 2.9 and traces version 2.2.                          *
 *                                                                            *
 *   Subject to the copyright notice in the file COPYRIGHT.                   *
 *                                                                            *
@@ -105,13 +105,26 @@
 *       19-Feb-16 - make R command induce a partition if one is defined      *
 *       17-Feb-23 - increase WORKSIZE                                        *
 *        2-Apr-24 - allow undirected graphs to have loops                    *
+*       13-Nov-24 - add a signal catcher and error message for SIGSEGV       *
+*       19-Dec-24 - add (, t6 and b6 commands                                *
+*        5-Jan-25 - separate invariants options for graphs and digraphs      *
 *                                                                            *
 *****************************************************************************/
+
+#ifndef _POSIX_C_SOURCE
+#define _POSIX_C_SOURCE 200809L
+#endif
+#ifndef _XOPEN_SOURCE
+#define _XOPEN_SOURCE 500
+#endif
 
 #include "gtools.h"    /* which includes nauty.h, which includes stdio.h */
 #include "nautinv.h"  
 #include "schreier.h"
 #include "traces.h"
+#if HAVE_SIGNAL_H
+#include <signal.h>
+#endif
 
 #define USAGE "dreadnaut [-o options]"
 
@@ -127,7 +140,7 @@
 
 #define PM(x) ((x) ? '+' : '-')
 #define SS(n,sing,plur)  (n),((n)==1?(sing):(plur))
-#define WORKSIZE 120
+#define WORKSIZE 500
 #define FLUSHANDPROMPT \
    do { flushline(INFILE); if (prompt) fprintf(PROMPTFILE,"> "); } while (0)
 
@@ -140,7 +153,7 @@
 #define INFILE fileptr[curfile]
 #define SCHREIER_DEFAULT 10
 
-static long seed;
+static unsigned long long seed;
 
 #if !MAXN
 DYNALLSTAT(graph,g,g_sz);
@@ -158,9 +171,9 @@ DYNALLSTAT(int,savedptn,savedptn_sz);
 DYNALLSTAT(set,tempactive,tempactive_sz);
 DYNALLSTAT(set,active,active_sz);
 #else
-static graph g[MAXM*1L*MAXN];
-static graph canong[MAXM*1L*MAXN];
-static graph savedg[MAXM*1L*MAXN];
+static graph g[MAXM*(size_t)MAXN];
+static graph canong[MAXM*(size_t)MAXN];
+static graph savedg[MAXM*(size_t)MAXN];
 static setword workspace[MAXM*2L*WORKSIZE];
 static int lab[MAXN];
 static int ptn[MAXN];
@@ -176,9 +189,12 @@ static set active[MAXM];
 static sparsegraph g_sg;
 static sparsegraph canong_sg;
 static sparsegraph savedg_sg;
+static graph *gtemp;
 
 static DEFAULTOPTIONS_GRAPH(options);
+static DEFAULTOPTIONS_DIGRAPH(options_dig);
 static DEFAULTOPTIONS_SPARSEGRAPH(options_sg);
+/* static DEFAULTOPTIONS_SPARSEDIGRAPH(options_sg_dig); */
 static statsblk stats;
 static int curfile;
 static FILE *fileptr[MAXIFILES];
@@ -203,6 +219,7 @@ static TracesStats traces_stats;
               "command %c is not implemented for Traces\n",c); }
 
 static int mode;
+static void *sigstk_ss_sp = NULL;
 
 #define U_NODE  1               /* masks for u values */
 #define U_AUTOM 2
@@ -214,38 +231,38 @@ static int mode;
 #ifndef  NODEPROC
 #define NODEPROC usernode
 #else
-extern void NODEPROC(graph*,int*,int*,int,int,int,int,int,int);
+void NODEPROC(graph*,int*,int*,int,int,int,int,int,int);
 #endif
 
 #ifndef  AUTOMPROC
 #define AUTOMPROC userautom
 #else
-extern void AUTOMPROC(int,int*,int*,int,int,int);
+void AUTOMPROC(int,int*,int*,int,int,int);
 #endif
 
 #ifndef  LEVELPROC
 #define LEVELPROC userlevel
 #else
-extern void LEVELPROC(int*,int*,int,int*,statsblk*,int,int,int,int,int,int);
+void LEVELPROC(int*,int*,int,int*,statsblk*,int,int,int,int,int,int);
 #endif
 
 #ifndef  REFPROC
 #define REFPROC NULL
 #else
-extern void REFPROC(graph*,int*,int*,int,int*,int*,set*,int*,int,int);
+void REFPROC(graph*,int*,int*,int,int*,int*,set*,int*,int,int);
 #endif
 
 #ifndef  CANONPROC
 #define CANONPROC usercanon
 #else
-extern int CANONPROC(graph*,int*,graph*,unsigned long,int,int,int);
+int CANONPROC(graph*,int*,graph*,unsigned long,int,int,int);
 #endif
 
 #ifndef  INVARPROC
 #define INVARPROC NULL
 #define INVARPROCNAME "none"
 #else
-extern void INVARPROC(graph*,int*,int*,int,int,int,int*,int,boolean,int,int);
+void INVARPROC(graph*,int*,int*,int,int,int,int*,int,boolean,int,int);
 #define INVARPROCNAME "user-defined"
 #endif
 
@@ -253,7 +270,7 @@ extern void INVARPROC(graph*,int*,int*,int,int,int,int*,int,boolean,int,int);
 #define INVARPROC_SG NULL
 #define INVARPROCNAME_SG "none"
 #else
-extern void INVARPROC_SG(graph*,int*,int*,int,int,int,int*,int,boolean,int,int);
+void INVARPROC_SG(graph*,int*,int*,int,int,int,int*,int,boolean,int,int);
 #define INVARPROCNAME_SG "user-defined"
 #endif
 
@@ -295,6 +312,8 @@ static boolean options_writeautoms,options_writemarkers,
             options_digraph,options_getcanon,options_linelength;
 static int options_invarproc,options_mininvarlevel,options_maxinvarlevel,
             options_invararg,options_tc_level,options_cartesian;
+static int options_invarproc_dig,options_mininvarlevel_dig,
+            options_maxinvarlevel_dig,options_invararg_dig;
 static int options_schreier,options_keepgroup,options_verbosity,
            options_strategy;
 
@@ -313,7 +332,7 @@ EXTRADECLS
 #define ALLOW_INTERRUPT 0
 #endif
 
-#if ALLOW_INTERRUPT
+#if ALLOW_INTERRUPT && defined(SIGINT)
 /*****************************************************************************
 *                                                                            *
 *  Routines for catching SIGINT                                              *
@@ -334,7 +353,7 @@ sigintcatcher(int sig)
 }
 
 static void
-setsigcatcher(void)
+setsigintcatcher(void)
 {
     struct sigaction ss;
 
@@ -346,7 +365,7 @@ setsigcatcher(void)
 }
 
 static void
-unsetsigcatcher(void)
+unsetsigintcatcher(void)
 {
     struct sigaction ss;
 
@@ -358,15 +377,86 @@ unsetsigcatcher(void)
 }
 #else
 static void
-setsigcatcher(void)
+setsigintcatcher(void)
 {
 }
 
 static void
-unsetsigcatcher(void)
+unsetsigintcatcher(void)
 {
 }
 #endif
+
+#if ALLOW_INTERRUPT && defined(SIGSEGV) && HAVE_WRITE && defined(SA_ONSTACK) && SIGALTSTACK_DEC
+/*****************************************************************************
+*                                                                            *
+*  Routines for catching SIGSEGV                                             *
+*  It seems there is no portable way to catch SIGSEGV and write an error     *
+*  message before exiting, even in a POSIX environment. This is because      *
+*  POSIX does not specify any i/o routines as safe in a signal routine.      *
+*  However, we can be slightly brave and use write() if it is available,     *
+*  since it safe in most installations, and where that is not true our       *
+*  intention is to die anyway.                                               *
+*                                                                            *
+*****************************************************************************/
+
+void
+sigsegvcatcher(int sig)
+/* This is the routine called on SIGSEGV receipt. */
+{
+    char msg[]="\n>E SIGSEGV: try increasing the stack size\n";
+
+#ifdef STDERR_FILENO
+    if (write(STDERR_FILENO,msg,sizeof(msg)-1) < 0) {/*too bad*/}
+#else
+    if (write(2,msg,sizeof(msg)-1) < 0) {/*too bad*/}
+#endif
+    _exit(1);
+}
+
+static void
+setsigsegvcatcher(void)
+{
+    struct sigaction ss;
+    stack_t sigstk;  /* Might be stack overflow so needs signal stack */
+
+#ifdef SIGSTKSZ
+#define ALTSTACKSIZE SIGSTKSZ
+#else
+#define ALTSTACKSIZE 2048
+#endif
+
+    if ((sigstk.ss_sp = ALLOCS(1,ALTSTACKSIZE)) == NULL)
+        gt_abort(">E Cannot allocate signal stack\n");
+    sigstk_ss_sp = sigstk.ss_sp;
+    sigstk.ss_size = ALTSTACKSIZE;
+    sigstk.ss_flags = 0;
+    if (sigaltstack(&sigstk,0) < 0) perror("sigaltstack");
+
+    ss.sa_handler = sigsegvcatcher;
+    sigemptyset(&ss.sa_mask);
+    ss.sa_flags = SA_ONSTACK;
+    sigaction(SIGSEGV,&ss,0);
+}
+#else
+static void
+setsigsegvcatcher(void)
+{
+}
+#endif
+
+static void
+dyn_all(int m, int n)
+/* Common task for allocating memory */
+{
+#if !MAXN
+                DYNALLOC1(int,lab,lab_sz,n,"dreadnaut");
+                DYNALLOC1(int,ptn,ptn_sz,n,"dreadnaut");
+                DYNALLOC1(int,orbits,orbits_sz,n,"dreadnaut");
+                DYNALLOC1(int,perm,perm_sz,n,"dreadnaut");
+                DYNALLOC1(set,active,active_sz,m,"dreadnaut");
+#endif
+}
 
 /*****************************************************************************
 *                                                                            *
@@ -392,7 +482,7 @@ main(int argc, char *argv[])
     unsigned long long uli;
     size_t sli;
     set *gp;
-    double timebefore,timeafter,mintime;
+    double timebefore,timeafter=0.0,mintime;
     char filename[515];
     int sgn,sgorg,nperm;
     int multiplicity,actmult;
@@ -437,6 +527,10 @@ main(int argc, char *argv[])
     options_maxinvarlevel = options.maxinvarlevel;
     options_invararg = options.invararg;
     options_invarproc = 1; /* index into invarproc[] */
+    options_mininvarlevel_dig = options_dig.mininvarlevel;
+    options_maxinvarlevel_dig = options_dig.maxinvarlevel;
+    options_invararg_dig = options_dig.invararg;
+    options_invarproc_dig = 14; /* index into invarproc[] */
     options_tc_level = options.tc_level;
     options_cartesian = options.cartesian;
     options_linelength = options.linelength;
@@ -449,15 +543,12 @@ main(int argc, char *argv[])
     n = m = 1;
     worksize = WORKSIZE;
 
+    setsigsegvcatcher();
+
 #if !MAXN
     n = WORDSIZE;
-    DYNALLOC2(graph,g,g_sz,n,m,"dreadnaut");
-    DYNALLOC1(int,lab,lab_sz,n,"dreadnaut");
-    DYNALLOC1(int,ptn,ptn_sz,n,"dreadnaut");
-    DYNALLOC1(int,orbits,orbits_sz,n,"dreadnaut");
-    DYNALLOC1(int,perm,perm_sz,n,"dreadnaut");
-    DYNALLOC1(set,active,active_sz,m,"dreadnaut");
-    n = 1;
+    DYNALLOC2(graph,g,g_sz,1,WORDSIZE,"dreadnaut");
+    dyn_all(1,WORDSIZE);
 #endif
 
 #ifdef DREADTEST
@@ -802,8 +893,11 @@ main(int argc, char *argv[])
         case 'n':   /* read n value */
             minus = FALSE;
             i = getint_sl(INFILE);
-            if (i <= 0 || (MAXN && i > MAXN)
-                       || (!MAXN && i > NAUTY_INFINITY-2))
+#if MAXN
+            if (i <= 0 || i > MAXN)
+#else
+            if (i <= 0 || i > NAUTY_INFINITY-2)
+#endif
             {
                 fprintf(ERRFILE,
                      " n can't be less than 1 or more than %d\n",
@@ -822,13 +916,6 @@ main(int argc, char *argv[])
                 n = i;
                 m = SETWORDSNEEDED(n);
                 freeschreier(NULL,&generators); 
-#if !MAXN
-                DYNALLOC1(int,lab,lab_sz,n,"dreadnaut");
-                DYNALLOC1(int,ptn,ptn_sz,n,"dreadnaut");
-                DYNALLOC1(int,orbits,orbits_sz,n,"dreadnaut");
-                DYNALLOC1(int,perm,perm_sz,n,"dreadnaut");
-                DYNALLOC1(set,active,active_sz,m,"dreadnaut");
-#endif
             }
             break;
 
@@ -854,6 +941,78 @@ main(int argc, char *argv[])
                 cvalid = FALSE;
             }
             ovalid = FALSE;
+            break;
+
+
+        case '(':   /* read coded graph */
+            minus = FALSE;
+            ovalid = FALSE;
+            cvalid = FALSE;
+            if (SPARSEREP(mode))
+            {
+                cvalid_sg = FALSE;
+                if (readcoded(INFILE,prompt,TRUE,NULL,
+                                       &g_sg,&options_digraph,&n))
+                {
+#if MAXN
+                    if (n > MAXN)
+                    {
+                        fprintf(ERRFILE,"Graph larger than MAXN\n");
+                        FLUSHANDPROMPT;
+                        SG_FREE(g_sg);
+                        gvalid_sg = FALSE;
+                        break;
+                    }
+#endif
+                    loops = numloops_sg(&g_sg);
+                    gvalid_sg = TRUE;
+                    m = SETWORDSNEEDED(n);
+                }
+                else
+                {
+                    gvalid_sg = FALSE;
+                    fprintf(ERRFILE,"Can't construct graph\n");
+                    FLUSHANDPROMPT;
+                    break;
+                }
+            }
+            else
+            {
+#if !MAXN
+                DYNFREE(g,g_sz);
+#endif
+                if (readcoded(INFILE,prompt,FALSE,&gtemp,
+                                                NULL,&options_digraph,&n))
+                {
+                    m = SETWORDSNEEDED(n);
+#if MAXN
+                    if (n > MAXN)
+                    {
+                        fprintf(ERRFILE,"Graph larger than MAXN\n");
+                        FLUSHANDPROMPT;
+                        FREES(gtemp);
+                        gvalid = FALSE;
+                        break;
+                    }
+                    memcpy(g,gtemp,m*sizeof(graph)*n);
+                    FREES(gtemp);
+#else
+                    DYNFREE(g,g_sz);
+                    g = gtemp;
+                    g_sz = (size_t)m * (size_t)n;
+#endif
+                    loops = numloops(g,m,n);
+                    gvalid = TRUE;
+                }
+                else
+                {
+                    gvalid_sg = FALSE;
+                    fprintf(ERRFILE,"Can't construct graph\n");
+                    FLUSHANDPROMPT;
+                    break;
+                }
+            }
+            freeschreier(NULL,&generators); 
             break;
 
         case 'e':   /* edit graph */
@@ -922,7 +1081,6 @@ main(int argc, char *argv[])
             break;
 
         case 'R':   /* form subgraph */
-//LOOPS
             if (gvalid)
             {
 #if !MAXN
@@ -1184,13 +1342,6 @@ main(int argc, char *argv[])
 #endif
                 newn = 2 * (n + 1);
                 newm = SETWORDSNEEDED(newn);
-#if !MAXN
-                DYNALLOC1(int,lab,lab_sz,newn,"dreadnaut");
-                DYNALLOC1(int,ptn,ptn_sz,newn,"dreadnaut");
-                DYNALLOC1(int,orbits,orbits_sz,newn,"dreadnaut");
-                DYNALLOC1(int,perm,perm_sz,newn,"dreadnaut");
-                DYNALLOC1(set,active,active_sz,newm,"dreadnaut");
-#endif
                 ovalid = FALSE;
                 pvalid = FALSE;
                 freeschreier(NULL,&generators);
@@ -1304,6 +1455,7 @@ main(int argc, char *argv[])
                 FLUSHANDPROMPT;
                 break;
             }
+            dyn_all(m,n);
             if (!pvalid) unitptn(lab,ptn,&numcells,n);
             cellstarts(ptn,0,active,m,n);
 #ifdef  CPUTIME
@@ -1311,21 +1463,44 @@ main(int argc, char *argv[])
 #endif
             if (gvalid)
             {
-                doref(g,lab,ptn,0,&numcells,&qinvar,perm,active,&refcode,
-                    options.userrefproc ? options.userrefproc : 
-                    (m == 1 ? refine1 : refine),
-                    invarproc[options_invarproc].entrypoint,0,0,
-                    options_invararg,options_digraph,m,n);
+                if (options_digraph)
+                {
+                    doref(g,lab,ptn,0,&numcells,&qinvar,perm,active,&refcode,
+                        options.userrefproc ? options.userrefproc : 
+                        (m == 1 ? refine1 : refine),
+                        invarproc[options_invarproc_dig].entrypoint,0,0,
+                        options_invararg_dig,options_digraph||loops>0,m,n);
+                }
+                else
+                {
+                    doref(g,lab,ptn,0,&numcells,&qinvar,perm,active,&refcode,
+                        options.userrefproc ? options.userrefproc : 
+                        (m == 1 ? refine1 : refine),
+                        invarproc[options_invarproc].entrypoint,0,0,
+                        options_invararg,options_digraph||loops>0,m,n);
+                }
                 if (numcells > 1) pvalid = TRUE;
             }
             else if (gvalid_sg)
             {
-                doref((graph*)&g_sg,lab,ptn,0,&numcells,&qinvar,perm,
-                    active,&refcode,
-                    options_sg.userrefproc ? options_sg.userrefproc : 
-                    refine_sg,
-                    invarproc[options_invarproc].entrypoint_sg,0,0,
-                    options_invararg,options_digraph,m,n);
+                if (options_digraph)
+                {
+                    doref((graph*)&g_sg,lab,ptn,0,&numcells,&qinvar,perm,
+                        active,&refcode,
+                        options_sg.userrefproc ? options_sg.userrefproc : 
+                        refine_sg,
+                        invarproc[options_invarproc_dig].entrypoint_sg,0,0,
+                        options_invararg_dig,options_digraph||loops>0,m,n);
+                }
+                else
+                {
+                    doref((graph*)&g_sg,lab,ptn,0,&numcells,&qinvar,perm,
+                        active,&refcode,
+                        options_sg.userrefproc ? options_sg.userrefproc : 
+                        refine_sg,
+                        invarproc[options_invarproc].entrypoint_sg,0,0,
+                        options_invararg,options_digraph||loops>0,m,n);
+                }
                 if (numcells > 1) pvalid = TRUE;
             }
             else
@@ -1370,6 +1545,7 @@ main(int argc, char *argv[])
                 FLUSHANDPROMPT;
                 break;
             }
+            dyn_all(m,n);
             if (!pvalid) unitptn(lab,ptn,&numcells,n);
             cellstarts(ptn,0,active,m,n);
 
@@ -1440,6 +1616,7 @@ main(int argc, char *argv[])
 
         case 'x':   /* execute nauty or Traces */
             minus = FALSE;
+            timebefore = 0.0;
             if (mode == TRACES_MODE)
             {
                 ovalid = FALSE;
@@ -1450,7 +1627,14 @@ main(int argc, char *argv[])
                     FLUSHANDPROMPT;
                     break;
                 }
+                if (options_digraph)
+                {
+                    fprintf(ERRFILE,"Traces can't handle digraphs\n");
+                    FLUSHANDPROMPT;
+                    break;
+                }
 
+                dyn_all(m,n);
                 traces_opts.getcanon = options_getcanon;
                 traces_opts.writeautoms = options_writeautoms;
                 traces_opts.cartesian = options_cartesian;
@@ -1504,7 +1688,7 @@ main(int argc, char *argv[])
                 timebefore = CPUTIME;
 #endif
                 actmult = 0;
-                setsigcatcher(); 
+                setsigintcatcher(); 
                 for (;;)
                 {
                     if (loops > 0) fprintf(ERRFILE,
@@ -1523,54 +1707,54 @@ main(int argc, char *argv[])
                         break;
 #endif
                 }
-                unsetsigcatcher(); 
+                unsetsigintcatcher(); 
 #ifdef  CPUTIME
                 timeafter = CPUTIME;
 #endif
-            if (traces_stats.errstatus)
-            {
-                if (traces_stats.errstatus == NAUABORTED)
-                    fprintf(ERRFILE,"Traces aborted\n");
-                else if (traces_stats.errstatus == NAUKILLED)
-                    fprintf(ERRFILE,"Traces interrupted\n");
+                if (traces_stats.errstatus)
+                {
+                    if (traces_stats.errstatus == NAUABORTED)
+                        fprintf(ERRFILE,"Traces aborted\n");
+                    else if (traces_stats.errstatus == NAUKILLED)
+                        fprintf(ERRFILE,"Traces interrupted\n");
+                    else
+                        fprintf(ERRFILE,
+                          "Traces returned error status %d [this can't happen]\n",
+                          traces_stats.errstatus);
+                    cvalid = cvalid_sg = ovalid = FALSE;
+                }
                 else
-                    fprintf(ERRFILE,
-                      "Traces returned error status %d [this can't happen]\n",
-                      traces_stats.errstatus);
-                cvalid = cvalid_sg = ovalid = FALSE;
-            }
-            else
-            {
-                fprintf(outfile,"%d orbit%s",
-                                SS(traces_stats.numorbits,"","s"));
-                fprintf(outfile,"; grpsize=");
-                writegroupsize(outfile,
-                               traces_stats.grpsize1,traces_stats.grpsize2);
-                fprintf(outfile,"; %d gen%s",
+                {
+                    fprintf(outfile,"%d orbit%s",
+                                    SS(traces_stats.numorbits,"","s"));
+                    fprintf(outfile,"; grpsize=");
+                    writegroupsize(outfile,
+                                   traces_stats.grpsize1,traces_stats.grpsize2);
+                    fprintf(outfile,"; %d gen%s",
                      SS(traces_stats.numgenerators,"","s"));
-                fprintf(outfile,
-                     "; %lu node%s ", SS(traces_stats.numnodes,"","s"));
-                if (traces_stats.interrupted)
                     fprintf(outfile,
-                            "(%lu interrupted, ",traces_stats.interrupted);
-                else
-                    fprintf(outfile,"(");
-                fprintf(outfile,"%lu peak); maxlev=%d\n",
-                    traces_stats.peaknodes,traces_stats.treedepth);
-                if (options_getcanon)
-                    fprintf(outfile,
-                            "canupdates=%d; ",traces_stats.canupdates);
+                         "; %lu node%s ", SS(traces_stats.numnodes,"","s"));
+                    if (traces_stats.interrupted)
+                        fprintf(outfile,
+                                "(%lu interrupted, ",traces_stats.interrupted);
+                    else
+                        fprintf(outfile,"(");
+                    fprintf(outfile,"%lu peak); maxlev=%d\n",
+                        traces_stats.peaknodes,traces_stats.treedepth);
+                    if (options_getcanon)
+                        fprintf(outfile,
+                                "canupdates=%d; ",traces_stats.canupdates);
 #ifdef  CPUTIME
-                fprintf(outfile,actmult == 1 ?
-                              "cpu time = %.2f seconds\n" :
-                              "cpu time = %.7f seconds\n",
-                              (timeafter-timebefore)/actmult);
+                    fprintf(outfile,actmult == 1 ?
+                                  "cpu time = %.2f seconds\n" :
+                                  "cpu time = %.7f seconds\n",
+                                  (timeafter-timebefore)/actmult);
 #else
-                fprintf(outfile,"\n");
+                    fprintf(outfile,"\n");
 #endif
-                if (options_getcanon) cvalid_sg = TRUE;
-                ovalid = TRUE;
-            } 
+                    if (options_getcanon) cvalid_sg = TRUE;
+                    ovalid = TRUE;
+                } 
             }
             else 
             {
@@ -1582,6 +1766,7 @@ main(int argc, char *argv[])
                     FLUSHANDPROMPT;
                     break;
                 }
+                dyn_all(m,n);
                 if (mode == DENSE_MODE)
                 {
                     if (pvalid)
@@ -1599,14 +1784,30 @@ main(int argc, char *argv[])
                     options.getcanon = options_getcanon;
                     options.tc_level = options_tc_level;
                     options.linelength = options_linelength;
-                    options.invarproc
-                                = invarproc[options_invarproc].entrypoint;
-                    options.mininvarlevel = options_mininvarlevel;
-                    if (options.invarproc)
-                       options.maxinvarlevel = options_maxinvarlevel;
+
+                    if (options_digraph)
+                    {
+                        options.invarproc
+                               = invarproc[options_invarproc_dig].entrypoint;
+                        options.mininvarlevel = options_mininvarlevel_dig;
+                        if (options.invarproc)
+                           options.maxinvarlevel = options_maxinvarlevel_dig;
+                        else
+                           options.maxinvarlevel = 0;
+                        options.invararg = options_invararg_dig;
+                    }
                     else
-                       options.maxinvarlevel = 0;
-                    options.invararg = options_invararg;
+                    {
+                        options.invarproc
+                                    = invarproc[options_invarproc].entrypoint;
+                        options.mininvarlevel = options_mininvarlevel;
+                        if (options.invarproc)
+                           options.maxinvarlevel = options_maxinvarlevel;
+                        else
+                           options.maxinvarlevel = 0;
+                        options.invararg = options_invararg;
+                    }
+
                     if (options_schreier > 0)
                         schreier_fails(options_schreier);
 
@@ -1633,7 +1834,7 @@ main(int argc, char *argv[])
                     timebefore = CPUTIME;
 #endif
                     actmult = 0;
-                    setsigcatcher();
+                    setsigintcatcher();
                     for (;;)
                     {
                         nauty(g,lab,ptn,NULL,orbits,&options,&stats,workspace,
@@ -1650,7 +1851,7 @@ main(int argc, char *argv[])
                                 break;
 #endif
                     }
-                    unsetsigcatcher();
+                    unsetsigintcatcher();
 #ifdef  CPUTIME
                     timeafter = CPUTIME;
 #endif
@@ -1666,19 +1867,35 @@ main(int argc, char *argv[])
                         options_sg.defaultptn = TRUE;
 
                     options_sg.outfile = outfile;
-                    options_sg.digraph = options_digraph;
+                    options_sg.digraph = (options_digraph || loops > 0);
                     options_sg.cartesian = options_cartesian;
                     options_sg.schreier = (options_schreier > 0);
                     options_sg.getcanon = options_getcanon;
                     options_sg.linelength = options_linelength;
-                    options_sg.invarproc
-                         = invarproc[options_invarproc].entrypoint_sg;
-                    options_sg.mininvarlevel = options_mininvarlevel;
-                    if (options_sg.invarproc)
-                       options_sg.maxinvarlevel = options_maxinvarlevel;
+
+                    if (options_digraph)
+                    {
+                        options_sg.invarproc
+                             = invarproc[options_invarproc_dig].entrypoint_sg;
+                        options_sg.mininvarlevel = options_mininvarlevel_dig;
+                        if (options_sg.invarproc)
+                           options_sg.maxinvarlevel = options_maxinvarlevel_dig;
+                        else
+                           options_sg.maxinvarlevel = 0;
+                        options_sg.invararg = options_invararg_dig;
+                    }
                     else
-                       options_sg.maxinvarlevel = 0;
-                    options_sg.invararg = options_invararg;
+                    {
+                        options_sg.invarproc
+                             = invarproc[options_invarproc].entrypoint_sg;
+                        options_sg.mininvarlevel = options_mininvarlevel;
+                        if (options_sg.invarproc)
+                           options_sg.maxinvarlevel = options_maxinvarlevel;
+                        else
+                           options_sg.maxinvarlevel = 0;
+                        options_sg.invararg = options_invararg;
+                    }
+
                     options_sg.tc_level = options_tc_level;
                     if (options_schreier > 0)
                         schreier_fails(options_schreier);
@@ -1705,7 +1922,7 @@ main(int argc, char *argv[])
                     timebefore = CPUTIME;
 #endif
                     actmult = 0;
-                    setsigcatcher();
+                    setsigintcatcher();
                     for (;;)
                     {
                         nauty((graph*)&g_sg,lab,ptn,NULL,orbits,&options_sg,
@@ -1722,7 +1939,7 @@ main(int argc, char *argv[])
                             break;
 #endif
                     }
-                    unsetsigcatcher();
+                    unsetsigintcatcher();
 #ifdef  CPUTIME
                     timeafter = CPUTIME;
 #endif
@@ -1769,23 +1986,29 @@ main(int argc, char *argv[])
 #else
                     fprintf(outfile,"\n");
 #endif
-                    if (mode == DENSE_MODE && options_maxinvarlevel != 0
-                       && invarproc[options_invarproc].entrypoint)
+                    if (mode == DENSE_MODE && options.maxinvarlevel != 0
+                                           && options.invarproc)
                     {
                         fprintf(outfile,"invarproc \"%s\" succeeded %lu/%lu",
-                            invarproc[options_invarproc].name,
+                            (options_digraph ? 
+                             invarproc[options_invarproc_dig].name :
+                             invarproc[options_invarproc].name),
                             stats.invsuccesses,stats.invapplics);
                         if (stats.invarsuclevel > 0)
                             fprintf(outfile," beginning at level %d.\n",
                                     stats.invarsuclevel);
                         else
                             fprintf(outfile,".\n");
+
                     }
-                    if (mode == SPARSE_MODE && options_maxinvarlevel != 0
-                       && invarproc[options_invarproc].entrypoint_sg)
+
+                    if (mode == SPARSE_MODE && options.maxinvarlevel != 0
+                                            && options.invarproc)
                     {
                         fprintf(outfile,"invarproc \"%s\" succeeded %lu/%lu",
-                            invarproc[options_invarproc].name_sg,
+                           (options_digraph ?
+                            invarproc[options_invarproc_dig].name_sg :
+                            invarproc[options_invarproc].name_sg),
                             stats.invsuccesses,stats.invapplics);
                         if (stats.invarsuclevel > 0)
                             fprintf(outfile," beginning at level %d.\n",
@@ -1877,7 +2100,7 @@ main(int argc, char *argv[])
             {
                 if (!gvalid && !gvalid_sg)
                 {
-                    fprintf(stderr,"g is not defined\n");
+                    fprintf(ERRFILE,"g is not defined\n");
                     FLUSHANDPROMPT;
                     break;
                 }
@@ -1914,10 +2137,28 @@ main(int argc, char *argv[])
 
         case 't':   /* type graph */
             minus = FALSE;
+            if ((d = getc(INFILE)) != '6') ungetc(d,INFILE);
+
             if (gvalid)
-                putgraph(outfile,g,options_linelength,m,n);
+            {
+                if (d == '6')
+                {
+                    if (options_digraph) writed6(outfile,g,m,n);
+                    else                 writeg6(outfile,g,m,n);
+                }
+                else
+                    putgraph(outfile,g,options_linelength,m,n);
+            }
             else if (gvalid_sg)
-                putgraph_sg(outfile,&g_sg,options_linelength);
+            {
+                if (d == '6')
+                {
+                    if (options_digraph) writed6_sg(outfile,&g_sg);
+                    else                 writes6_sg(outfile,&g_sg);
+                }
+                else
+                    putgraph_sg(outfile,&g_sg,options_linelength);
+            }
             else
             {
                 fprintf(ERRFILE,"g is not defined\n");
@@ -2063,12 +2304,28 @@ main(int argc, char *argv[])
 
         case 'b':   /* type canonlab and canong */
             minus = FALSE;
+            if ((d = getc(INFILE)) != '6') ungetc(d,INFILE);
+
             if (cvalid)
-                putcanon(outfile,lab,canong,options_linelength,m,n);
+            {
+                if (d == '6')
+                {
+                    if (options_digraph) writed6(outfile,canong,m,n);
+                    else                writeg6(outfile,canong,m,n);
+                }
+                else
+                    putcanon(outfile,lab,canong,options_linelength,m,n);
+            }
             else if (cvalid_sg)
             {
                 sortlists_sg(&canong_sg);
-                putcanon_sg(outfile,lab,&canong_sg,options_linelength);
+                if (d == '6')
+                {
+                    if (options_digraph) writed6_sg(outfile,&canong_sg);
+                    else                writes6_sg(outfile,&canong_sg);
+                }
+                else
+                    putcanon_sg(outfile,lab,&canong_sg,options_linelength);
             }
             else
             {
@@ -2164,13 +2421,24 @@ main(int argc, char *argv[])
             break;
 
         case 'k':   /* set invarlev fields of options */
-            options_mininvarlevel = getint_sl(INFILE);
-            options_maxinvarlevel = getint_sl(INFILE);
+            if (options_digraph)
+            {
+                options_mininvarlevel_dig = getint_sl(INFILE);
+                options_maxinvarlevel_dig = getint_sl(INFILE);
+            }
+            else
+            {
+                options_mininvarlevel = getint_sl(INFILE);
+                options_maxinvarlevel = getint_sl(INFILE);
+            }
             minus = FALSE;
             break;
 
         case 'K':   /* set invararg field of options */
-            options_invararg = getint_sl(INFILE);
+            if (options_digraph)
+                options_invararg_dig = getint_sl(INFILE);
+            else
+                options_invararg = getint_sl(INFILE);
             minus = FALSE;
             break;
 
@@ -2179,13 +2447,27 @@ main(int argc, char *argv[])
             d = getint_sl(INFILE);
             if (d >= -1 && d <= NUMINVARS-2)
             {
-                options_invarproc = d+1;
-                options_mininvarlevel = 0;
-                options_maxinvarlevel = 1;
-                if (options_invarproc >= 10 && options_invarproc <= 13)
-                    options.invararg = 3;
+                if (options_digraph)
+                {
+                    options_invarproc_dig = d+1;
+                    options_mininvarlevel_dig = 0;
+                    options_maxinvarlevel_dig = 1;
+                    if (options_invarproc_dig >= 10
+                                && options_invarproc_dig <= 13)
+                        options_invararg_dig = 3;
+                    else
+                        options_invararg_dig = 0;
+                }
                 else
-                    options.invararg = 0;
+                {
+                    options_invarproc = d+1;
+                    options_mininvarlevel = 0;
+                    options_maxinvarlevel = 1;
+                    if (options_invarproc >= 10 && options_invarproc <= 13)
+                        options_invararg = 3;
+                    else
+                        options_invararg = 0;
+                }
             }
             else
             {
@@ -2337,7 +2619,6 @@ main(int argc, char *argv[])
                 if (options_digraph) fprintf(outfile," arcs=%llu",uli);
                 else           fprintf(outfile," edges=%llu",(uli+loops)/2);
                 if (loops > 0) fprintf(outfile," loops=%d",loops);
-if (loops != numloops(g,m,n)) gt_abort_2(">E loops=%d actual=%d\n",loops,numloops(g,m,n));
             }
             else
             {
@@ -2345,7 +2626,6 @@ if (loops != numloops(g,m,n)) gt_abort_2(">E loops=%d actual=%d\n",loops,numloop
                 if (options_digraph) fprintf(outfile," arcs=%llu",uli);
                 else           fprintf(outfile," edges=%llu",(uli+loops)/2);
                 if (loops > 0) fprintf(outfile," loops=%d",loops);
-if (loops != numloops_sg(&g_sg)) gt_abort_2(">E loops=%d actual=%d\n",loops,numloops_sg(&g_sg));
             }
             fprintf(outfile," options=(%cc%ca%cm%cp%cd",
                         PM(options_getcanon),PM(options_writeautoms),
@@ -2357,11 +2637,25 @@ if (loops != numloops_sg(&g_sg)) gt_abort_2(">E loops=%d actual=%d\n",loops,numl
                 fprintf(outfile," u=%d",umask&31);
             if (options_tc_level > 0)
                 fprintf(outfile," y=%d",options_tc_level);
-            if (options_mininvarlevel != 0 || options_maxinvarlevel != 0)
-                fprintf(outfile," k=(%d,%d)",
-                              options_mininvarlevel,options_maxinvarlevel);
-            if (options_invararg > 0)
-                fprintf(outfile," K=%d",options_invararg);
+
+            if (options_digraph)
+            {
+                if (options_mininvarlevel_dig != 0
+                                         || options_maxinvarlevel_dig != 0)
+                    fprintf(outfile," k=(%d,%d)",
+                          options_mininvarlevel_dig,options_maxinvarlevel_dig);
+                if (options_invararg_dig > 0)
+                    fprintf(outfile," K=%d",options_invararg_dig);
+            }
+            else
+            {
+                if (options_mininvarlevel != 0 || options_maxinvarlevel != 0)
+                    fprintf(outfile," k=(%d,%d)",
+                                  options_mininvarlevel,options_maxinvarlevel);
+                if (options_invararg > 0)
+                    fprintf(outfile," K=%d",options_invararg);
+            }
+
             if (multiplicity != 1 || mintime != 0.0)
                 fprintf(outfile," M=%d/%.0f",multiplicity,mintime);
             fprintf(outfile,")\n");
@@ -2376,11 +2670,24 @@ if (loops != numloops_sg(&g_sg)) gt_abort_2(">E loops=%d actual=%d\n",loops,numl
                 if (options_strategy != 0)
                     fprintf(outfile," S=%d",options_strategy);
             }
-            if (options_invarproc != 1)
-                fprintf(outfile," invarproc=%s",
-                  (mode == DENSE_MODE ?
-                    invarproc[options_invarproc].name : 
-                    invarproc[options_invarproc].name_sg)); 
+
+            if (options_digraph)
+            {
+                if (options_invarproc_dig != 1)
+                    fprintf(outfile," invarproc=%s",
+                      (mode == DENSE_MODE ?
+                        invarproc[options_invarproc_dig].name : 
+                        invarproc[options_invarproc_dig].name_sg)); 
+            }
+            else
+            {
+                if (options_invarproc != 1)
+                    fprintf(outfile," invarproc=%s",
+                      (mode == DENSE_MODE ?
+                        invarproc[options_invarproc].name : 
+                        invarproc[options_invarproc].name_sg)); 
+            }
+ 
             if (pvalid)
                 fprintf(outfile,"; %d cell%s",SS(numcells,"","s"));
             else
@@ -2434,6 +2741,8 @@ if (loops != numloops_sg(&g_sg)) gt_abort_2(">E loops=%d actual=%d\n",loops,numl
 
         if (flushing) fflush(outfile);
     }
+
+    if (sigstk_ss_sp != NULL) FREES(sigstk_ss_sp);
 
     exit(0);
 }

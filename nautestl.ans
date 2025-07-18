@@ -629,4 +629,4 @@
           1 graphs : squares=18; triang=10; maxlcliq=7; components=5; nonedges=33; maxindset=7; maxclique=4
           1 graphs : squares=18; triang=11; maxlcliq=6; components=5; nonedges=33; maxindset=6; maxclique=5
  15772 graphs altogether; cpu=0.01 sec
->A ./countg --WTKcceehk
+>A ./countg --W,T,K,cc,ee,h,k

@@ -1,4 +1,4 @@
-/* genrang.c  version 2.7; B D McKay, Sep 2023 */
+/* genrang.c  version 3.0; B D McKay, Mar 2025 */
 /* TODO:  Check allocs for no edges */
 
 #define USAGE \
@@ -141,10 +141,10 @@ gcomplement_bip(graph *g, int m, int n1, int n2)
 /**************************************************************************/
 
 static void
-ranedges(long e, boolean loopsok, graph *g, int m, int n)
+ranedges(unsigned long long e, boolean loopsok, graph *g, int m, int n)
 /* Random graph with n vertices and e edges */
 {
-    unsigned long ln,li,nc2,ned,sofar;
+    unsigned long long ln,nc2,ned,sofar;
     set *gi,*gj;
     int i,j;
 
@@ -156,8 +156,7 @@ ranedges(long e, boolean loopsok, graph *g, int m, int n)
     else             ned = e;
     sofar = 0;
 
-    for (li = m*ln; --li != 0;) g[li] = 0;
-    g[0] = 0;
+    EMPTYGRAPH(g,m,ln);
 
     while (sofar < ned)
     {
@@ -180,22 +179,21 @@ ranedges(long e, boolean loopsok, graph *g, int m, int n)
 /**************************************************************************/
 
 static void
-ranedges_bip(long e, graph *g, int m, int n1, int n2)
+ranedges_bip(unsigned long long e, graph *g, int m, int n1, int n2)
 /* Random bipartite graph with n1+n2 vertices and e edges */
 {
-    size_t li,nc2,ned,sofar;
+    unsigned long long nc2,ned,sofar;
     set *gi,*gj;
     int i,j,n;
 
     n = n1 + n2;
-    nc2 = (size_t)n1*n2;
+    nc2 = n1*(unsigned long long)n2;
 
     if (e + e > nc2) ned = nc2 - e;
     else             ned = e;
     sofar = 0;
 
-    for (li = m*(size_t)n; --li != 0;) g[li] = 0;
-    g[0] = 0;
+    EMPTYGRAPH(g,m,n);
 
     while (sofar < ned)
     {
@@ -221,10 +219,9 @@ grandtourn(graph *g, int m, int n)
 /* Random tournament */
 {
     int i,j;
-    long li;
     set *row,*col;
 
-    for (li = (long)m * (long)n; --li >= 0;) g[li] = 0;
+    EMPTYGRAPH(g,m,n);
 
     for (i = 0, row = g; i < n; ++i, row += m)
     {
@@ -241,11 +238,10 @@ grandtourn_bip(graph *g, int m, int n1, int n2)
 /* Random bipartite tournament */
 {
     int i,j,n;
-    long li;
     set *row,*col;
 
     n = n1 + n2;
-    for (li = (long)m * (long)n; --li >= 0;) g[li] = 0;
+    EMPTYGRAPH(g,m,n);
 
     for (i = 0, row = g; i < n1; ++i, row += m)
     {
@@ -263,10 +259,9 @@ grandgraph(graph *g, boolean digraph, boolean loopsok,
 /* Random graph with probability p1/p2 */
 {
     int i,j;
-    long li;
     set *row,*col;
 
-    for (li = (long)m * (long)n; --li >= 0;) g[li] = 0;
+    EMPTYGRAPH(g,m,n);
 
     for (i = 0, row = g; i < n; ++i, row += m)
         if (digraph)
@@ -295,12 +290,11 @@ grandgraph_bip(graph *g, boolean digraph,
 /* Random bipartite graph with probability p1/p2 */
 {
     int i,j,n;
-    long li;
     set *row,*col;
 
     n = n1 + n2;
 
-    for (li = (long)m * (long)n; --li >= 0;) g[li] = 0;
+    EMPTYGRAPH(g,m,n);
 
     for (i = 0, row = g; i < n1; ++i, row += m)
         if (digraph)
@@ -323,10 +317,10 @@ grandgraph_bip(graph *g, boolean digraph,
 /**************************************************************************/
 
 static void
-ranarcs(long e, boolean loopsok, graph *g, int m, int n)
+ranarcs(unsigned long long e, boolean loopsok, graph *g, int m, int n)
 /* Random digraph graph with n vertices and e edges */
 {
-    unsigned long ln,li,nn,ned,sofar;
+    unsigned long long ln,nn,ned,sofar;
     set *gi;
     int i,j;
 
@@ -337,8 +331,7 @@ ranarcs(long e, boolean loopsok, graph *g, int m, int n)
     else            ned = e;
     sofar = 0;
 
-    for (li = m*ln; --li != 0;) g[li] = 0;
-    g[0] = 0;
+    EMPTYGRAPH(g,m,ln);
 
     while (sofar < ned)
     {
@@ -364,7 +357,7 @@ makeranreg(int *cub, int degree, int multmax, int loopmax, int n)
    entries of cub[] is set to the neighbours of one vertex.
    The length of cub had better be at least degree*n  */
 {
-    long i,j,k,v,w,nn,mult;
+    long long i,j,k,v,w,nn,mult;
     boolean ok;
 #if MAXN
     int deg[MAXN],p[MAXLREG*MAXN],loops[MAXN];
@@ -432,8 +425,8 @@ rundmodel(int *cub, int degree, int n)
    Each consecutive degree entries of cub[] is set to the neighbours
    of one vertex.  The length of cub had better be at least degree*n  */
 {
-    long iters,fails;
-    size_t i,j,navail;
+    long long iters,fails;
+    long long i,j,navail;
     int *cubi,*cubj,vi,vj,k;
     boolean ok;
 #if MAXN
@@ -458,7 +451,7 @@ rundmodel(int *cub, int degree, int n)
             deg[i] = 0;
             for (j = 0; j < degree; ++j) avail[k++] = i;
         }
-        navail = n*degree;
+        navail = n*(long long)degree;
 
         while (navail >= 2 && ok)
         {
@@ -504,9 +497,9 @@ rundirmodel(int *cub, int degree, int n)
    Each consecutive degree entries of cub[] is set to the neighbours
    of one vertex.  The length of cub had better be at least degree*n  */
 {
-    long fails;
+    long long fails;
   /* long iters; */
-    size_t i,j,navail;
+    long long i,j,navail;
     int *cubi,vi,vj,k;
     boolean ok;
     DYNALLSTAT(int,deg,deg_sz);
@@ -533,7 +526,7 @@ rundirmodel(int *cub, int degree, int n)
                 ++k;
             }
         }
-        navail = n*degree;
+        navail = n*(long long)degree;
 
         while (navail >= 1 && ok)
         {
@@ -571,7 +564,7 @@ rundirmodel(int *cub, int degree, int n)
 static void
 ranregR(FILE *f, int degree, int multmax, int loopmax, int n)
 /* Make a random regular graph of order n and degree d and write
-   it in f, as number of vertices, number of edges, list of edges */
+   it to f, as number of vertices, number of edges, list of edges */
 {
     long i,j,k,l;
     int loops;
@@ -639,7 +632,7 @@ ranreglm_sg(int degree, sparsegraph *sg, int multmax, int loopmax, int n)
  * and return it in sg. */
 {
     int i,j,k,deg,loops;
-    long nde,k0;
+    size_t nde,k0;
 #if MAXN
     int cub[MAXLREG*MAXN];
 #else
@@ -685,7 +678,7 @@ markov(int *cub, int degree, int n, long iters, boolean digraph)
 {
     int a,b,x,y;
     int niter;
-    long i,ax,by,aa,bb,xx,yy,iter;
+    long long i,ax,by,aa,bb,xx,yy,iter;
 
     if (degree == 0) return;
 
@@ -695,18 +688,18 @@ markov(int *cub, int degree, int n, long iters, boolean digraph)
         a = KRAN(n);
         b = KRAN(n);
         if (a == b) continue;
-        ax = degree*(long)a + KRAN(degree);
+        ax = degree*(long long)a + KRAN(degree);
         x = cub[ax];
         if (x == b) continue;
-        by = degree*(long)b + KRAN(degree);
+        by = degree*(long long)b + KRAN(degree);
         y = cub[by];
         if (y == a || y == x) continue;
 
-        aa = degree * (long)a;
+        aa = degree * (long long)a;
         for (i = aa; i < aa+degree; ++i)
             if (cub[i] == y) break;
         if (i < aa+degree) continue;
-        bb = degree * (long)b;
+        bb = degree * (long long)b;
         for (i = bb; i < bb+degree; ++i)
             if (cub[i] == x) break;
         if (i < bb+degree) continue;
@@ -716,10 +709,10 @@ markov(int *cub, int degree, int n, long iters, boolean digraph)
 
         if (!digraph)
         {
-            xx = degree * (long)x;
+            xx = degree * (long long)x;
             for (i = xx; i < xx+degree; ++i)
                 if (cub[i] == a) { cub[i] = b; break; }
-            yy = degree * (long)y;
+            yy = degree * (long long)y;
             for (i = yy; i < yy+degree; ++i)
                 if (cub[i] == b) { cub[i] = a; break; }
         }
@@ -736,11 +729,12 @@ markov_bip(int *cub, int deg1, int deg2, int n1, int n2, long iters)
 {
     int a,b,x,y;
     int niter;
-    long i,ax,by,aa,bb,xx,yy,iter;
-    long offset;
+    long iter;
+    long long i,ax,by,aa,bb,xx,yy;
+    long long offset;
 
     if (deg1 == 0) return;
-    offset = n1 * (long)(deg1-deg2);
+    offset = n1 * (long long)(deg1-deg2);
 
     for (iter = 0; iter < iters; ++iter)
     for (niter = 0; niter < n1+n2; ++niter)
@@ -748,17 +742,17 @@ markov_bip(int *cub, int deg1, int deg2, int n1, int n2, long iters)
         a = KRAN(n1);
         b = KRAN(n1);
         if (a == b) continue;
-        ax = deg1*(long)a + KRAN(deg1);
+        ax = deg1*(long long)a + KRAN(deg1);
         x = cub[ax];
-        by = deg1*(long)b + KRAN(deg1);
+        by = deg1*(long long)b + KRAN(deg1);
         y = cub[by];
         if (y == x) continue;
 
-        aa = deg1 * (long)a;
+        aa = deg1 * (long long)a;
         for (i = aa; i < aa+deg1; ++i)
             if (cub[i] == y) break;
         if (i < aa+deg1) continue;
-        bb = deg1 * (long)b;
+        bb = deg1 * (long long)b;
         for (i = bb; i < bb+deg1; ++i)
             if (cub[i] == x) break;
         if (i < bb+deg1) continue;
@@ -766,10 +760,10 @@ markov_bip(int *cub, int deg1, int deg2, int n1, int n2, long iters)
         cub[ax] = y;
         cub[by] = x;
 
-        xx = offset + deg2 * (long)x;
+        xx = offset + deg2 * (long long)x;
         for (i = xx; i < xx+deg2; ++i)
             if (cub[i] == a) { cub[i] = b; break; }
-        yy = offset + deg2 * (long)y;
+        yy = offset + deg2 * (long long)y;
         for (i = yy; i < yy+deg2; ++i)
             if (cub[i] == b) { cub[i] = a; break; }
     }
@@ -784,7 +778,7 @@ dmodel_sg(int degree, sparsegraph *sg, int n,
  * and return it in sg.  Run markov() for n*markoviters iterations. */
 {
     int i,j,k,deg,comdeg;
-    long k0,nde;
+    size_t k0,nde;
     DYNALLSTAT(int,cub,cub_sz);
     DYNALLSTAT(boolean,adj,adj_sz);
 
@@ -801,7 +795,7 @@ dmodel_sg(int degree, sparsegraph *sg, int n,
         j = nde = 0;
         for (i = 0; i < n; ++i)
         {
-            sg->v[i] = k0 = i*(long)degree;
+            sg->v[i] = k0 = i*(size_t)degree;
             deg = 0;
             for (k = 0; k < degree; ++k, ++j)
                 sg->e[k0+deg++] = cub[j];
@@ -823,7 +817,7 @@ dmodel_sg(int degree, sparsegraph *sg, int n,
         j = nde = 0;
         for (i = 0; i < n; ++i)
         {
-            sg->v[i] = k0 = i*(long)degree;
+            sg->v[i] = k0 = i*(size_t)degree;
             deg = 0;
             for (k = 0; k < n; ++k) adj[k] = TRUE;
             adj[i] = FALSE;
@@ -845,7 +839,7 @@ rundmodel_bip(int *cub, int deg1, int deg2, int n1, int n2)
    Each consecutive deg1/deg2 entries of cub[] is set to the neighbours
    of one vertex.  The length of cub had better be at least 2*deg1*n1  */
 {
-    long iters,fails;
+    long long iters,fails;
     size_t i,j,k,navail,ne;
     int *cubi,*cubj,vi,vj,n;
     boolean ok;
@@ -985,7 +979,7 @@ dmodel_bip_sg(int deg1, sparsegraph *sg, int n1, int n2, long markoviters)
         j = nde = 0;
         for (i = 0; i < n1; ++i)
         {
-            sg->v[i] = k0 = i*(long)deg1;
+            sg->v[i] = k0 = i*(size_t)deg1;
             deg = 0;
             for (k = n1; k < n; ++k) adj[k] = TRUE;
             for (k = 0; k < comdeg1; ++k, ++j) adj[cub[j]] = FALSE;
@@ -996,7 +990,7 @@ dmodel_bip_sg(int deg1, sparsegraph *sg, int n1, int n2, long markoviters)
         }
         for (i = n1; i < n; ++i)
         {
-            sg->v[i] = k0 = ne + (i-n1)*(long)deg2;
+            sg->v[i] = k0 = ne + (i-n1)*(size_t)deg2;
             deg = 0;
             for (k = 0; k < n1; ++k) adj[k] = TRUE;
             for (k = 0; k < comdeg2; ++k, ++j) adj[cub[j]] = FALSE;
@@ -1134,15 +1128,15 @@ main(int argc, char *argv[])
     boolean gswitch,sswitch,qswitch,Sswitch,Rswitch,lswitch,tswitch;
     boolean aswitch,Pswitch,eswitch,rswitch,mswitch,dswitch;
     boolean Tswitch,Mswitch;
-    long numgraphs,nout,P1value,P2value,evalue,rvalue;
-    nauty_counter ln,nc2;
+    long numgraphs,nout,P1value,P2value,rvalue;
+    unsigned long long ln,nc2;
     int loopmax,multmax;
-    unsigned long long Svalue;
+    unsigned long long Svalue,evalue;
     long markoviters;
     static FILE *outfile;
     char *outfilename;
     sparsegraph sg;
-    boolean usesparse,digraph,bipartite;
+    boolean usesparse,digraph,bipartite=FALSE;
 
 #if MAXN
     graph g[MAXM*1L*MAXN];
@@ -1180,7 +1174,7 @@ main(int argc, char *argv[])
                 else SWBOOLEAN('T',Tswitch)
                 else SWBOOLEAN('q',qswitch)
                 else SWRANGE('P',"/",Pswitch,P1value,P2value,"genrang -P")
-                else SWLONG('e',eswitch,evalue,"genrang -e")
+                else SWULL('e',eswitch,evalue,"genrang -e")
                 else SWLONG('d',dswitch,rvalue,"genrang -d")
                 else SWLONG('M',Mswitch,markoviters,"genrang -M")
                 else SWLONG('r',rswitch,rvalue,"genrang -r")
@@ -1317,14 +1311,14 @@ main(int argc, char *argv[])
 
     ln = n;
     if (bipartite)
-        nc2 = (unsigned long)n1*n2;
+        nc2 = n1*(unsigned long long)n2;
     else
         nc2 = ln*loopmax + (1+(digraph!=0))*ln*(ln-1)/2*multmax;
 
     if (eswitch && evalue > nc2)
     {   
         fprintf(stderr,
-             ">E There are no graphs of order %d and %ld edges\n",
+             ">E There are no graphs of order %d and %lld edges\n",
              n,evalue);
         exit(1);
     }

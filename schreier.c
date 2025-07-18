@@ -49,6 +49,7 @@ static boolean filterschreier(schreier*,int*,permnode**,boolean,int,int);
 
 /************************************************************************/
 
+#if 0
 static void
 testispermutation(int id, int *p, int n)
 /* For debugging purposes, crash with a message if p[0..n-1] is
@@ -83,6 +84,7 @@ testispermutation(int id, int *p, int n)
         ADDELEMENT(seen,p[i]);
     }
 }
+#endif
     
 /************************************************************************/
 
@@ -566,6 +568,7 @@ filterschreier(schreier *gp, int *p, permnode **ring,
 ++filtercount;
 
     memcpy(workperm,p,n*sizeof(int));
+    ident = FALSE;
 
     if (*ring && p == (*ring)->p)
     {
@@ -774,7 +777,7 @@ getorbitsmin(int *fix, int nfix, schreier *gp, permnode **ring,
 {
     schreier *sh,*sha;
     int *fixorbs;
-    int i,j,k,icell,nfails,wordlen,skips;
+    int i,j,k,icell=0,nfails,wordlen,skips;
     permnode *pn;
 #if !MAXN
     DYNALLOC1(int,workperm2,workperm2_sz,n,"expandschreier");

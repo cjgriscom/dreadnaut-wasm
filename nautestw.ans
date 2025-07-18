@@ -10,5 +10,5 @@
         148 graphs : connect=16; econnect=16
          51 graphs : connect=17; econnect=17
           7 graphs : connect=18; econnect=18
- 1000 graphs altogether; cpu=4.02 sec
->A ./countg --GGG
+ 1000 graphs altogether; cpu=4.06 sec
+>A ./countg --G,GG

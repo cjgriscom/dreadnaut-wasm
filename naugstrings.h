@@ -7,13 +7,13 @@
 extern "C" {
 #endif
 
-extern void gtog6string(graph*,char**,int,int);
-extern void gtos6string(graph*,char**,int,int);
-extern void gtod6string(graph*,char**,int,int);
-extern void sgtos6string(sparsegraph*,char**);
-extern void sgtog6string(sparsegraph*,char**);
-extern void sgtod6string(sparsegraph*,char**);
-extern void gtois6string(graph*,graph*,char**,int,int);
+void gtog6string(graph*,char**,int,int);
+void gtos6string(graph*,char**,int,int);
+void gtod6string(graph*,char**,int,int);
+void sgtos6string(sparsegraph*,char**);
+void sgtog6string(sparsegraph*,char**);
+void sgtod6string(sparsegraph*,char**);
+void gtois6string(graph*,graph*,char**,int,int);
 
 #ifdef __cplusplus
 }

@@ -83,10 +83,9 @@
 #include "gtools.h"
 
 #ifdef FILTER
-extern boolean
-FILTER(graph *g, boolean digraph, long Qlo, long Qhi, int m, int n);
+boolean FILTER(graph *g, boolean digraph, long Qlo, long Qhi, int m, int n);
 #ifdef SUMMARY
-extern void SUMMARY(void);
+void SUMMARY(void);
 #endif
 #endif
 

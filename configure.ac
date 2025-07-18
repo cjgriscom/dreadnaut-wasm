@@ -1,5 +1,5 @@
 # Process this file with autoconf to produce a configure script.
-AC_INIT([nauty],[2.8.9],[brendan.mckay@anu.edu.au])
+AC_INIT([nauty],[2.9.0],[brendan.mckay@anu.edu.au])
 AC_CONFIG_SRCDIR([nauty-h.in])
 
 # ======================================================================
@@ -28,11 +28,27 @@ else
 fi
 AC_SUBST($2)])
 
+# Test for declaration with _POSIX_C_SOURCE=200809L and _XOPEN_SOURCE=500
+
+AC_DEFUN([AC_CHECK_POSIXDECL],
+ [AC_CHECK_DECL([$1],$2=1,$2=0,[[
+#ifndef _POSIX_C_SOURCE
+#define _POSIX_C_SOURCE 200809L
+#endif
+#ifndef _XOPEN_SOURCE
+#define _XOPEN_SOURCE 500
+#endif
+#include <stdio.h>
+#include <stdlib.h>
+#include <unistd.h>
+$3]])
+AC_SUBST($2)])
+
 dnl Check for noreturn attribute.  Note that this is the attribute for C and
 dnl might not work for C++. nauty.h does not use it.
 AC_DEFUN([AX_NORET], [
   AC_MSG_CHECKING([for noreturn attribute])
-   for ax_noret_keyword in '[[noreturn]]' '_Noreturn' '__attribute__((noreturn))' none; do
+   for ax_noret_keyword in '[[noreturn]]' '_Noreturn' '__attribute__((noreturn))' '__desclspec(noreturn)' none; do
        AS_CASE([$ax_noret_keyword],
           [none], [ac_cv_noret=none ; break],
           [AC_COMPILE_IFELSE([AC_LANG_PROGRAM(
@@ -159,6 +175,8 @@ esac
 case "$host" in
   *freebsd*)
      is_freebsd=1 ;;
+  *dragonfly*)
+     is_freebsd=1 ;;
   *)
      is_freebsd=0 ;;
 esac
@@ -168,11 +186,20 @@ user_cflags="$CFLAGS"
 AC_PROG_CC
 CFLAGS=$user_cflags
 MORECFLAGS=""
+
 dnl  we need  AC_SYS_LARGEFILE and AC_FUNC_FSEEKO
 AC_SYS_LARGEFILE
-AS_IF([test "x$ac_cv_sys_file_offset_bits" = "xno"],[ac_cv_sys_file_offset_bits=0])
+nauty_largefile=0
+AS_IF([test "x$ac_cv_sys_largefile_opts" = "x-D_FILE_OFFSET_BITS=64"],[nauty_largefile=1])
+AS_IF([test "x$ac_cv_sys_largefile_opts" = "x-D_LARGE_FILES=1"],[nauty_largefile=2])
 AS_IF([test "x$ac_cv_sys_file_offset_bits" = "x"],[ac_cv_sys_file_offset_bits=0])
-AC_SUBST(ac_cv_sys_file_offset_bits)
+AS_IF([test "x$ac_cv_sys_largefile_source" = "xno"],[ac_cv_sys_largefile_source=0])
+AS_IF([test "x$ac_cv_sys_largefile_source" = "x"],[ac_cv_sys_largefile_source=0])
+
+AC_FUNC_FSEEKO
+AS_IF([test "x$ac_cv_func_fseeko_ftello" = "xneed _LARGEFILE_SOURCE"],[ac_cv_sys_largefile_source=1])
+AC_SUBST(nauty_largefile)
+AC_SUBST(ac_cv_sys_largefile_source)
 
 AS_IF([test "x$user_cflags" = x || test "x$user_cflags" = x-m32],
 [
@@ -189,13 +216,6 @@ AS_IF([test "x$user_cflags" = x || test "x$user_cflags" = x-m32],
     ])
 ])
  
-#case "$CC" in
-#  gcc*)
-#     gccver=`$CC -dumpfullversion` ;;
-#  *)
-#     gccver=0.0.0 ;;
-#esac
-
 dnl Checks relevant to Cygwin and other Windows things
 AC_EXEEXT
 
@@ -214,31 +234,6 @@ CVT_YESNO(ac_cv_header_signal_h,header_signal_h)
 CVT_YESNO(ac_cv_header_limits_h,header_limits_h)
 CVT_YESNO(ac_cv_header_stdint_h,header_stdint_h)
 
-# The code here is for locating the crypto library, not currently used.
-# AC_ARG_WITH([crypto],AS_HELP_STRING([--with-crypto=DIR],[specify location of crypto library]),
-#   [cryptoloc=$with_crypto],[cryptoloc=])
-#AS_IF([test "x$cryptoloc" == "x"], [crypto_inc= ; crypto_lib="-lcrypto"],
-#   [crypto_inc="-I$cryptoloc/include" ; crypto_lib="-L$cryptoloc/lib -lcrypto"])
-#
-#cppflags_save=$CPPFLAGS
-#ldflags_save=$LDFLAGS
-#CPPFLAGS=$crypto_inc
-#LDFLAGS=$crypto_lib
-#
-#AC_MSG_CHECKING(for crypto library)
-#AC_CHECK_HEADERS(openssl/sha.h)
-#AS_IF([test "x$ac_cv_header_openssl_sha_h" == "xyes"],
-#  [AC_CHECK_LIB([crypto],[SHA256],
-#    [have_crypto=1], [have_crypto=0])],
-#  [have_crypto=0])
-#AS_IF([test $have_crypto -eq 0],[crypto_inc= ; crypto_lib=],[])
-#AC_SUBST(have_crypto)
-#AC_SUBST(crypto_inc)
-#AC_SUBST(crypto_lib)
-
-CPPFLAGS=$cppflags_save
-LDFLAGS=$ldflags_save
-
 AC_TYPE_PID_T
 CVT_YESNO(ac_cv_type_pid_t,have_pid_t)
 
@@ -246,12 +241,23 @@ AC_CHECK_DECL([ftell],ftell_dec=1,ftell_dec=0)
 AC_SUBST(ftell_dec)
 AC_CHECK_DECL([popen],popen_dec=1,popen_dec=0)
 AC_SUBST(popen_dec)
-AC_CHECK_DECL([fdopen],fdopen_dec=1,fdopen_dec=0)
-AC_SUBST(fdopen_dec)
-AC_CHECK_DECL([putenv],putenv_dec=1,putenv_dec=0)
-AC_SUBST(putenv_dec)
-AC_CHECK_DECL([setenv],setenv_dec=1,setenv_dec=0)
-AC_SUBST(setenv_dec)
+AC_CHECK_DECL([getc_unlocked],unlocked_dec=1,unlocked_dec=0)
+AC_SUBST(unlocked_dec)
+AC_CHECK_DECL([flockfile],flockfile_dec=1,flockfile_dec=0)
+AC_SUBST(flockfile_dec)
+AC_CHECK_DECL([fseeko],fseeko_dec=1,fseeko_dec=0)
+AC_SUBST(fseeko_dec)
+
+AC_CHECK_DECL([gettimeofday],gettimeofday_dec=1,gettimeofday_dec=0,[[
+ #include <stdio.h>
+ #include <sys/time.h>]])
+AC_SUBST(gettimeofday_dec)
+
+AC_CHECK_POSIXDECL([fdopen],fdopen_dec)
+AC_CHECK_POSIXDECL([putenv],putenv_dec)
+AC_CHECK_POSIXDECL([setenv],setenv_dec)
+AC_CHECK_POSIXDECL([sigaltstack],sigaltstack_dec,[
+ #include <signal.h>])
 
 AC_CHECK_DECL([malloc],malloc_dec=1,malloc_dec=0)
 AS_IF([test $malloc_dec -eq 0],
@@ -265,17 +271,6 @@ AC_COMPILE_IFELSE([AC_LANG_PROGRAM([[]], \
 [flex_array_ok=1],[flex_array_ok=0])
 AC_SUBST(flex_array_ok)
 AC_MSG_RESULT($flex_array_ok)
-
-AC_MSG_CHECKING(if INFINITY is declared in math.h)
-AC_EGREP_CPP(yes,
-[#include <stdio.h>
-#include <math.h>
-#ifdef INFINITY
-  yes
-#endif
-], has_math_inf=1, has_math_inf=0)
-AC_SUBST(has_math_inf)
-AC_MSG_RESULT($has_math_inf)
 
 dnl Checks for sizes of integer types
 testprogs="dreadtest dreadtestS dreadtestS1 dreadtest4K"
@@ -348,6 +343,10 @@ AC_CHECK_FUNC(sigaction,have_sigaction=1,have_sigaction=0)
 AC_SUBST(have_sigaction)
 AC_CHECK_FUNC(sigprocmask,have_sigprocmask=1,have_sigprocmask=0)
 AC_SUBST(have_sigprocmask)
+AC_CHECK_FUNC(write,have_write=1,have_write=0)
+AC_SUBST(have_write)
+
+AC_PROG_EGREP
 
 dnl --check if popcnt instruction is available and desired
 AC_MSG_CHECKING(if popcnt instruction is available and requested)
@@ -356,15 +355,16 @@ AC_RUN_IFELSE([AC_LANG_PROGRAM([],[[if (__builtin_cpu_supports("popcnt")) return
 
 AS_IF([test "$allow_popcnt" -eq 1],
       [have_hwpopcnt=$popsup
-test -f /proc/cpuinfo && grep -i popcnt /proc/cpuinfo >/dev/null && have_hwpopcnt=1 
-test $have_hwpopcnt -eq 0 && sysctl machdep.cpu.features 2>/dev/null | grep -i popcnt >/dev/null && have_hwpopcnt=1
-test $have_hwpopcnt -eq 0 && isainfo -x -v 2>/dev/null | grep -i popc >/dev/null && have_hwpopcnt=1
-test $have_hwpopcnt -eq 0 && isainfo -v 2>/dev/null | grep -i popc >/dev/null && have_hwpopcnt=1
+test -f /proc/cpuinfo && $EGREP -i popcnt /proc/cpuinfo >/dev/null && have_hwpopcnt=1 
+test $have_hwpopcnt -eq 0 && sysctl machdep.cpu.features 2>/dev/null | $EGREP -i popcnt >/dev/null && have_hwpopcnt=1
+test $have_hwpopcnt -eq 0 && isainfo -x -v 2>/dev/null | $EGREP -i popc >/dev/null && have_hwpopcnt=1
+test $have_hwpopcnt -eq 0 && isainfo -v 2>/dev/null | $EGREP -i popc >/dev/null && have_hwpopcnt=1
+test $have_hwpopcnt -eq 0 && test $is_freebsd -eq 1 && sysctl -a 2>/dev/null | $EGREP -i "Features*POPCNT" >/dev/null && have_hwpopcnt=1
 test $have_hwpopcnt -eq 0 && test $is_ARM64 -eq 1 && have_hwpopcnt=1
 ],
       [have_hwpopcnt=0
 ])
-# Some problems with popcnt on powerpc are not resolved yet
+# Some problems with popcnt on powerpc are not resolved yet and probably won't be
 test $is_powerpc -eq 1 && have_hwpopcnt=0
 AC_MSG_RESULT($have_hwpopcnt)
 AC_SUBST(have_hwpopcnt)
@@ -424,7 +424,7 @@ case "$CC" in
  *-march=* ) allow_native=0 ;;
 esac
 case "$build" in
- *musl ) allow_native=0 ;;
+ i686*musl ) allow_native=0 ;;
 esac
 
 AS_IF([test "$allow_native" -eq 1],
@@ -455,13 +455,16 @@ echo MORECFLAGS="$MORECFLAGS"
 
 dnl --check if lzcnt instruction is available and requested
 AC_MSG_CHECKING(if lzcnt instruction is available and requested)
+AC_RUN_IFELSE([AC_LANG_PROGRAM([],[[if (__builtin_cpu_supports("bmi")) return 0; else return 1;]])],
+  lzsup=1,lzsup=0)
 AS_IF([test "$allow_clz" -eq 1],
-      [have_hwlzcnt=0
-test -f /proc/cpuinfo && egrep -i "abm|bmi1" /proc/cpuinfo >/dev/null && have_hwlzcnt=1 
-test $have_hwlzcnt -eq 0 && sysctl machdep.cpu.features 2>/dev/null | egrep -i "bmi1|abm" >/dev/null && have_hwlzcnt=1
-test $have_hwlzcnt -eq 0 && sysctl machdep.cpu.extfeatures 2>/dev/null | egrep -i "lzcnt" >/dev/null && have_hwlzcnt=1
-test $have_hwlzcnt -eq 0 && isainfo -x -v 2>/dev/null | egrep -i "bmi1|abm" >/dev/null && have_hwlzcnt=1
-test $have_hwlzcnt -eq 0 && isainfo -v 2>/dev/null | egrep -i "bmi1|abm" >/dev/null && have_hwlzcnt=1
+      [have_hwlzcnt=$lzsup
+test -f /proc/cpuinfo && $EGREP -i "abm|bmi1" /proc/cpuinfo >/dev/null && have_hwlzcnt=1 
+test $have_hwlzcnt -eq 0 && sysctl machdep.cpu.features 2>/dev/null | $EGREP -i "bmi1|abm" >/dev/null && have_hwlzcnt=1
+test $have_hwlzcnt -eq 0 && sysctl machdep.cpu.extfeatures 2>/dev/null | $EGREP -i "lzcnt" >/dev/null && have_hwlzcnt=1
+test $have_hwlzcnt -eq 0 && isainfo -x -v 2>/dev/null | $EGREP -i "bmi1|abm" >/dev/null && have_hwlzcnt=1
+test $have_hwlzcnt -eq 0 && isainfo -v 2>/dev/null | $EGREP -i "bmi1|abm" >/dev/null && have_hwlzcnt=1
+test $have_hwlzcnt -eq 0 && test $is_freebsd -eq 1 && sysctl -a 2>/dev/null | $EGREP -i "Features*BMI1" >/dev/null && have_hwlzcnt=1
 test $have_hwlzcnt -eq 0 && test $is_ARM64 -eq 1 && have_hwlzcnt=1 ],
       [have_hwlzcnt=0])
 AC_MSG_RESULT($have_hwlzcnt)

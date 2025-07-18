@@ -21,11 +21,12 @@ it is necessary to check they are correct.
 #define HAVE_STDINT_H  @header_stdint_h@    /* <stdint.h> */
 #define MALLOC_DEC @malloc_dec@  /* 1 = malloc() is declared in stdlib.h, */
                                  /* 2 = in malloc.h, 0 = in neither place */
-#define HAS_MATH_INF @has_math_inf@ /* INFINITY is defined in math.h or */
-                                 /* some system header likely to be used */
 #define HAVE_FLOCKFILE @have_flockfile@  /* Whether flockfile() is available */
 #define HAS_STDIO_UNLOCK @stdio_nolock@  /* Whether there are getc_unlocked, */
                                /* putc_unlocked,flockfile and funlockfile */
+#define STDIO_UNLOCK_DECL @unlocked_dec@  /* is getc_unlocked() declared */
+#define STDIO_FLOCKFILE_DECL @flockfile_dec@  /* is flockfile() declared */
+#define HAVE_WRITE @have_write@  /* Whether write() is available */
 
 #define DEFAULT_WORDSIZE @default_wordsize@
 
@@ -54,17 +55,15 @@ it is necessary to check they are correct.
 
 /* Function noreturn attribute, if any */
 #define C_NORET_ATTR @ac_cv_noret@   /* Only for C */
-#if (defined(__cplusplus) && __cplusplus >= 202302L) \
-        || (!defined(__cplusplus) && __STDC_VERSION__ >= 202311L)
+
+#ifndef __cplusplus
+#define NORET_ATTR C_NORET_ATTR
+#elif __cplusplus >= 201103L
 #define NORET_ATTR [[noreturn]]
-#elif defined(__cplusplus) && __cplusplus >= 201103L
-#define NORET_ATTR [[_Noreturn]]
-#elif !defined(__cplusplus) && __STDC_VERSION__ >= 201112L
-#define NORET_ATTR _Noreturn
 #elif defined(__GNUC__)
 #define NORET_ATTR __attribute__((noreturn))
 #elif defined(_MSC_VER)
-#define NORET_ATTR __desclspec(noreturn)
+#define NORET_ATTR __declspec(noreturn)
 #else
 #define NORET_ATTR
 #endif
@@ -74,10 +73,26 @@ it is necessary to check they are correct.
 #define FLEX_ARRAY_OK @flex_array_ok@
  /* whether the compiler supports flexible array members in structures */
 
-#define _FILE_OFFSET_BITS @ac_cv_sys_file_offset_bits@
-#if _FILE_OFFSET_BITS == 64
-#define _LARGEFILE_SOURCE
-#else
+#define NAUTY_LARGEFILE_OPTS @nauty_largefile@
+#undef _FILE_OFFSET_BITS
+#if NAUTY_LARGEFILE_OPTS == 1
+#define _FILE_OFFSET_BITS 64
+#elif NAUTY_LARGEFILE_OPTS == 2
+#undef _LARGE_FILES
+#define _LARGE_FILES 1
+#endif
+
+#ifndef _LARGEFILE_SOURCE
+#define _LARGEFILE_SOURCE @ac_cv_sys_largefile_source@
+#endif
+#if _LARGEFILE_SOURCE == 0
+#undef _LARGEFILE_SOURCE
+#elif _FILE_OFFSET_BITS == 64
+#undef _LARGEFILE_SOURCE
+#define _LARGEFILE_SOURCE 1
+#endif
+
+#if _FILE_OFFSET_BITS == 0 
 #undef _FILE_OFFSET_BITS
 #endif
 
@@ -106,6 +121,12 @@ it is necessary to check they are correct.
 #define HAVE_MMPOP32 @have_mmpop32@
 #define HAVE_MMPOP64 @have_mmpop64@
 
+#if defined(__unix) || defined(__unix__) || defined(unix)
+#define SYS_UNIX
+#endif
+
+#define IS_ARM64 @is_ARM64@
+
 /*==================================================================*/
 
 /* The following line must be uncommented for compiling into Magma. */
@@ -121,12 +142,6 @@ it is necessary to check they are correct.
 #define P_(x) x
 #endif
 
-#if defined(__unix) || defined(__unix__) || defined(unix)
-#define SYS_UNIX
-#endif
-
-#define IS_ARM64 @is_ARM64@
-
 /*****************************************************************************
 *                                                                            *
 *    AUTHOR: Brendan D. McKay                                                *
@@ -138,9 +153,9 @@ it is necessary to check they are correct.
 *  This software is subject to copyright as detailed in the file COPYRIGHT.  *
 *                                                                            *
 *   Reference manual:                                                        *
-*     B. D. McKay and A. Piperno, nauty User's Guide (Version 2.5),          *
+*     B. D. McKay and A. Piperno, nauty User's Guide (Version 2.9),          *
 *         http://pallini.di.uniroma1.it                                      *
-*         http://cs.anu.edu.au/~bdm/nauty/                                   *
+*         https://users.cecs.anu.edu.au/~bdm/nauty/                          *
 *                                                                            *
 *   CHANGE HISTORY                                                           *
 *       10-Nov-87 : final changes for version 1.2                            *
@@ -335,6 +350,11 @@ it is necessary to check they are correct.
 *        7-Aug-23 : Added FILLSET and SETSIZE macros                         *
 *       11-Nov-23 : Added NORET_ATTR noreturn attribute for functions        *
 *        9-Feb-24 : Removed groupsize1, groupsize2 and outofspace #defines   *
+*       22-Jan-25 : Removed extern from all external function prototypes     *
+*        7-Mar-25 : Reworked the no-return attribute, declare flockfile()    *
+*                      if needed, moved all function defs inside C++ wal,    *
+*                      defined _LARGEFILE_SOURCE and _FILE_OFFSET_BITS       *
+*                      if needed.                                            *
 *                                                                            *
 * @edit_msg@
 *                                                                            *
@@ -583,7 +603,7 @@ typedef unsigned long long nauty_counter;
 #define COUNTER_FMT_RAW "llu"
 #define PRINT_COUNTER(f,x) fprintf(f,COUNTER_FMT,x)
 
-#define NAUTYVERSIONID (28090+HAVE_TLS)  /* 10000*version + HAVE_TLS */
+#define NAUTYVERSIONID (29000+HAVE_TLS)  /* 10000*version + HAVE_TLS */
 #define NAUTYREQUIRED NAUTYVERSIONID  /* Minimum compatible version */
 
 #if WORDSIZE==16
@@ -1219,24 +1239,10 @@ typedef struct optionstruct
 #define PUTC(c,f) io_putchar(c)
 #else
 #ifdef IS_JAVA
-extern void javastream(FILE* f,char c);
+void javastream(FILE* f,char c);
 #define PUTC(c,f) javastream(f,c)
 #else
 #define PUTC(c,f) putc(c,f)
-#endif
-#endif
-
-/* We hope that malloc, free, realloc are declared either in <stdlib.h>
-   or <malloc.h>.  Otherwise we will define them.  We also assume that
-   size_t has been defined by the time we get to define malloc(). */
-#ifndef NAUTY_IN_MAGMA
-#if MALLOC_DEC==2
-#include <malloc.h>
-#endif
-#if MALLOC_DEC==0
-extern void *malloc(size_t);
-extern void *realloc(void*,size_t);
-extern void free(void*);
 #endif
 #endif
 
@@ -1455,7 +1461,7 @@ int leftbit[] =   {8,7,6,6,5,5,5,5,4,4,4,4,4,4,4,4,
 #endif /* not NAUTY_IN_MAGMA */
 
 #define ANSIPROT 1
-#define EXTPROC(func,args) extern func args;     /* obsolete */
+#define EXTPROC(func,args) func args;     /* obsolete */
 
 /* The following is for C++ programs that read nauty.h.  Compile nauty
    itself using C, not C++.  */
@@ -1464,46 +1470,66 @@ int leftbit[] =   {8,7,6,6,5,5,5,5,4,4,4,4,4,4,4,4,
 extern "C" {
 #endif
 
-extern void NORET_ATTR alloc_error(const char*);
-extern void breakout(int*,int*,int,int,int,set*,int);
-extern boolean cheapautom(int*,int,boolean,int);
-extern void doref(graph*,int*,int*,int,int*,int*,int*,set*,int*,
+#ifndef NAUTY_IN_MAGMA
+#if MALLOC_DEC==2
+#include <malloc.h>
+#endif
+#if MALLOC_DEC==0
+void *malloc(size_t);
+void *realloc(void*,size_t);
+void free(void*);
+#endif
+#endif
+
+#if HAS_STDIO_UNLOCK && !STDIO_UNLOCK_DECL
+int getc_unlocked(FILE *stream);
+int putc_unlocked(int c, FILE *stream);
+#endif
+#if HAVE_FLOCKFILE && !STDIO_FLOCKFILE_DECL
+void flockfile(FILE *stream);
+void funlockfile(FILE *stream);
+#endif
+
+NORET_ATTR void alloc_error(const char*);
+void breakout(int*,int*,int,int,int,set*,int);
+boolean cheapautom(int*,int,boolean,int);
+void doref(graph*,int*,int*,int,int*,int*,int*,set*,int*,
   void(*)(graph*,int*,int*,int,int*,int*,set*,int*,int,int),
   void(*)(graph*,int*,int*,int,int,int,int*,int,boolean,int,int),
   int,int,int,boolean,int,int);
-extern void extra_autom(int*,int);
-extern void extra_level(int,int*,int*,int,int,int,int,int,int);
-extern boolean isautom(graph*,int*,boolean,int,int);
+void extra_autom(int*,int);
+void extra_level(int,int*,int*,int,int,int,int,int,int);
+boolean isautom(graph*,int*,boolean,int,int);
 extern dispatchvec dispatch_graph;
-extern int itos(int,char*);
-extern void fmperm(const int*,set*,set*,int,int);
-extern void fmptn(const int*,const int*,int,set*,set*,int,int);
-extern void longprune(set*,set*,set*,set*,int);
-extern void nauty(graph*,int*,int*,set*,int*,optionblk*,
+int itos(int,char*);
+void fmperm(const int*,set*,set*,int,int);
+void fmptn(const int*,const int*,int,set*,set*,int,int);
+void longprune(set*,set*,set*,set*,int);
+void nauty(graph*,int*,int*,set*,int*,optionblk*,
                   statsblk*,set*,int,int,int,graph*);
-extern void maketargetcell(graph*,int*,int*,int,
+void maketargetcell(graph*,int*,int*,int,
          set*,int*,int*,int,boolean,int,
          int (*)(graph*,int*,int*,int,int,boolean,int,int,int),int,int);
-extern int nextelement(const set*,int,int);
-extern int orbjoin(int*,const int*,int);
-extern void permset(const set*,set*,int,int*);
-extern void putstring(FILE*,const char*);
-extern void refine(graph*,int*,int*,int,int*,int*,set*,int*,int,int);
-extern void refine1(graph*,int*,int*,int,int*,int*,set*,int*,int,int);
-extern void shortprune(set*,const set*,int);
-extern int targetcell(graph*,int*,int*,int,int,boolean,int,int,int);
-extern int testcanlab(graph*,graph*,int*,int*,int,int);
-extern void updatecan(graph*,graph*,int*,int,int,int);
-extern void writeperm(FILE*,const int*,boolean,int,int);
-extern void nauty_freedyn(void);
-extern void nauty_check(int,int,int,int);
-extern void naugraph_check(int,int,int,int);
-extern void nautil_check(int,int,int,int);
-extern void nautil_freedyn(void);
-extern void naugraph_freedyn(void);
-extern void densenauty(graph*,int*,int*,int*,
+int nextelement(const set*,int,int);
+int orbjoin(int*,const int*,int);
+void permset(const set*,set*,int,int*);
+void putstring(FILE*,const char*);
+void refine(graph*,int*,int*,int,int*,int*,set*,int*,int,int);
+void refine1(graph*,int*,int*,int,int*,int*,set*,int*,int,int);
+void shortprune(set*,const set*,int);
+int targetcell(graph*,int*,int*,int,int,boolean,int,int,int);
+int testcanlab(graph*,graph*,int*,int*,int,int);
+void updatecan(graph*,graph*,int*,int,int,int);
+void writeperm(FILE*,const int*,boolean,int,int);
+void nauty_freedyn(void);
+void nauty_check(int,int,int,int);
+void naugraph_check(int,int,int,int);
+void nautil_check(int,int,int,int);
+void nautil_freedyn(void);
+void naugraph_freedyn(void);
+void densenauty(graph*,int*,int*,int*,
                         optionblk*,statsblk*,int,int,graph*);
-extern void writegroupsize(FILE*,double,int);
+void writegroupsize(FILE*,double,int);
 
 extern int labelorg;   /* Declared in nautil.c */
 extern volatile int nauty_kill_request;  /* Also declared in nautil.c */

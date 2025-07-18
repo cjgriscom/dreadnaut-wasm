@@ -63,7 +63,7 @@ main(int argc, char *argv[])
     int j,m,n,argnum;
     int codetype,outcode;
     graph *g;
-    size_t ii,ned,nedc,nn,loops,loopsc,gwords;
+    size_t ii,ned,nedc,nn,loops,loopsc=0,gwords;
     nauty_counter nin;
     char *arg,sw;
     static graph *gq;

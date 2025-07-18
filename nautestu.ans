@@ -8,5 +8,5 @@
         139 graphs : echrom=5; class=2
       23962 graphs : echrom=6; class=1
          56 graphs : echrom=7; class=2
- 38884 graphs altogether; cpu=0.06 sec
->A ./countg --NNA
+ 38884 graphs altogether; cpu=0.05 sec
+>A ./countg --NN,A

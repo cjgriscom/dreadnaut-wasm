@@ -18,9 +18,9 @@
 extern "C" {
 #endif
 
-extern void ran_init(long seed);
-extern long ran_init_time(long extra);
-extern long ran_nextran(void);
+void ran_init(long seed);
+long ran_init_time(long extra);
+long ran_nextran(void);
 
 #ifdef __cplusplus
 }

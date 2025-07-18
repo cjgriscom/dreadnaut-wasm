@@ -133,6 +133,7 @@ connectivity1(graph *g, int n)
     setword w;
 
     mind = n+1;
+    v = 0;
     for (i = 0; i < n; ++i)
     {
         d = POPCOUNT(g[i] & ~bit[i]);
@@ -186,6 +187,7 @@ diconnectivity1(graph *g, int n)
     setword w;
 
     mind = n+1;
+    v = 0;
     for (i = 0; i < n; ++i)
     {
         d = POPCOUNT(g[i] & ~bit[i]);
@@ -404,6 +406,7 @@ connectivity(graph *g, int m, int n, boolean digraph)
         gt_abort(">E connectivity() requires m <= NAUTY_INFINITY/2\n");
 
     mind = n+1;
+    v = 0;
     for (i = 0, gi = g; i < n; ++i, gi += m)
     {
         d = 0;
@@ -711,6 +714,7 @@ edgeconnectivity1(graph *g, int n)
     int d,i,u,v,c,f;
     
     c = n;
+    u = 0;
     for (i = 0; i < n; ++i)
     {
         d = POPCOUNT(g[i] & ~bit[i]);
@@ -838,7 +842,8 @@ edgeconnectivity(graph *g, int m, int n)
 
     if (m == 1) return edgeconnectivity1(g,n);
 
-    c = n;
+    u = 0;
+    c = n+1;
     for (i = 0, gi = g; i < n; ++i, gi += m)
     {
         d = 0;
@@ -885,6 +890,7 @@ isthisedgeconnected1(graph *g, int n, int c)
     int d,i,mind,u,v;
     
     mind = n;
+    u = 0;
     for (i = 0; i < n; ++i)
     {
         d = POPCOUNT(g[i] & ~bit[i]);
@@ -924,7 +930,8 @@ isthisedgeconnected(graph *g, int m, int n, int c)
 
     if (m == 1) return isthisedgeconnected1(g,n,c);
 
-    mind = n;
+    mind = n+1;
+    u = 0;
     for (i = 0, gi = g; i < n; ++i, gi += m)
     {
         d = 0;

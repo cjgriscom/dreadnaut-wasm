@@ -3,8 +3,8 @@
  * This is the main file for traces() version 2.2, which is included into     *
  *   nauty() version 2.8.6.                                                   *
  *                                                                            *
- *   nauty is Copyright (1984-2018) Brendan McKay.  All rights reserved.      *
- *   Traces is Copyright Adolfo Piperno, 2008-2018.  All rights reserved.     *
+ *   nauty is subject to the conditions and disclaimers in the file COPYRIGHT.*
+ *   Traces is Copyright Adolfo Piperno, 2008-2024.  All rights reserved.     *
  *   See the file COPYRIGHT for the details of the software license.          *
  *                                                                            *
  *   CHANGE HISTORY                                                           *
@@ -26,6 +26,8 @@
  *       10-Nov-22 : bug correction (cycles in degree 2 subgraphs)            *
  *       07-Aug-23 : bug correction (colors in degree 2 subgraphs)            *
  *****************************************************************************/
+
+#pragma GCC diagnostic ignored "-Wunused-function"
 
 #include "traces.h"
 
@@ -242,8 +244,8 @@ typedef struct ExpPathInfo {
     int info;
 } ExpPathInfo;
 
-static boolean traces_degree_refine(sparsegraph*, Candidate*, int, Partition*,
-                                    struct TracesVars*, struct TracesInfo*, int, int*);
+//static boolean traces_degree_refine(sparsegraph*, Candidate*, int, Partition*,
+//                                    struct TracesVars*, struct TracesInfo*, int, int*);
 static int  traces_vertexclass_refine (int, int*, int*, Candidate*, Partition*, int*);
 static int  traces_refine(Candidate*, int, Partition*,
                           struct TracesVars*, struct TracesInfo*, int, boolean);
@@ -255,8 +257,8 @@ static int  traces_refine_comptrie(Candidate*, int, Partition*,
                                    struct TracesVars*, struct TracesInfo*);
 static int  traces_refine_sametrace(Candidate*, int, Partition*,
                                     struct TracesVars*, struct TracesInfo*);
-static int  traces_refine_refine(sparsegraph*, Candidate*, int, Partition*,
-                                 struct TracesVars*, struct TracesInfo*);
+//static int  traces_refine_refine(sparsegraph*, Candidate*, int, Partition*,
+//                                 struct TracesVars*, struct TracesInfo*);
 static void  refine_tr_refine(Candidate*, int, Partition*,
                               struct TracesVars*, struct TracesInfo*);
 static int given_gens(sparsegraph*, permnode*, int*, boolean, struct TracesVars*);
@@ -327,7 +329,7 @@ static int NextNeighbour(int, Candidate*, Partition*, int*, int, int*, int);
 static sparsegraph* copy_sg_structure(sparsegraph*, sparsegraph*);
 static void WeightCodes (int);
 static void PrintWeightedGraph1(sparsegraph*, int, char[30]);
-static void PrintWeightedGraph2(int n, char msg[30]);
+//static void PrintWeightedGraph2(int n, char msg[30]);
 static void MakeDiscrete(Partition*, int);
 static void Complete(sparsegraph*, Candidate*, Partition*, int, TracesVars*, double*, int*,permnode**, int);
 static void Allocate_Traces_Structures(int);
@@ -843,9 +845,9 @@ Traces(sparsegraph *g_arg, int *lab, int *ptn,
        int *orbits_arg, TracesOptions *options_arg, TracesStats *stats_arg,
        sparsegraph *canong_arg) {
     int i, j;
-    int tmp;
-    int deg, vtx1, vtx2, *ngh1, *ngh2, *wgh1, *wgh2, ord;
-    size_t j1;
+    int tmp, ord;
+//    int deg, vtx1, vtx2, *ngh1, *ngh2, *wgh1, *wgh2, ord;
+//    size_t j1;
     
     trielist *STStart, *STAux;
     searchtrie *TrieNode;
@@ -1379,10 +1381,10 @@ int traces_refine(Candidate *Cand,
     int newtrace = FALSE;
     int Sparse = TRUE;
     int *lab, *cls, *InvLab, *TracePos, *SplitCell, *LabCell, *TraceEnd, Traceccend, *Tracestpend;
-    int BigCell, BigCellPos, BigCellSize;
+    int BigCell = n, BigCellPos = n, BigCellSize = 0;
     boolean TraceCell = FALSE;
     int *nghb;
-    int conta;
+//    int conta;
     const int variation = 0;
     int currentweight, weightstart, weightend, currentcell, currentsize;
     
@@ -1421,7 +1423,7 @@ int traces_refine(Candidate *Cand,
     if (!SpineTL->thetracexists) {
         newtrace = TRUE;
     }
-    conta=0;
+//    conta=0;
     
     while (CStackInd > 0) {
         
@@ -2143,7 +2145,7 @@ void traces_refine_notrace(Candidate *Cand,
                            Partition *Part,
                            struct TracesVars* tv,
                            struct TracesInfo *ti) {
-    int i, j, k, jk, sc, ind0, ind1, ind2, ind3, labi, auxcells;
+    int i, j, k, jk, sc, ind0, ind1, ind2, ind3, labi; //, auxcells;
     int value, iend, newcell;
     int HitClsInd, SplInd, SplCntInd, CStackInd;
     int iend1int, j1int;
@@ -2151,7 +2153,7 @@ void traces_refine_notrace(Candidate *Cand,
     int Split = 0;
     int Sparse = TRUE;
     int *lab, *cls, *InvLab, *SplitCell, *LabCell;
-    int BigCell, BigCellPos, BigCellSize;
+    int BigCell = n, BigCellPos = n, BigCellSize = 0;
     int *nghb;
     const int variation = 1;
     int currentweight, weightstart, weightend, currentcell, currentsize;
@@ -2747,7 +2749,7 @@ void traces_refine_maketrie(Candidate *Cand,
     int Split = 0;
     int Sparse = TRUE;
     int *lab, *cls, *InvLab, *SplitCell, *LabCell;
-    int BigCell, BigCellPos, BigCellSize;
+    int BigCell = n, BigCellPos = n, BigCellSize = 0;
     int *nghb;
     const int variation = 1;
     int currentweight, weightstart, weightend, currentcell, currentsize;
@@ -3324,7 +3326,7 @@ int traces_refine_comptrie(Candidate *Cand,
     int Split = 0;
     int Sparse = TRUE;
     int *lab, *cls, *InvLab, *SplitCell, *LabCell;
-    int BigCell, BigCellPos, BigCellSize;
+    int BigCell = n, BigCellPos = n, BigCellSize = 0;
     int *nghb;
     const int variation = 1;
     int currentweight, weightstart, weightend, currentcell, currentsize;
@@ -3906,7 +3908,7 @@ int traces_refine_sametrace(Candidate *Cand,
     unsigned int longcode;
     int Sparse = TRUE;
     int *lab, *cls, *InvLab, *TracePos, *SplitCell, *LabCell, *TraceEnd, Traceccend, *Tracestpend;
-    int BigCell, BigCellPos, BigCellSize;
+    int BigCell = n, BigCellPos = n, BigCellSize = 0;
     boolean TraceCell = FALSE;
     int *nghb;
     const int variation = 0;
@@ -4741,14 +4743,14 @@ void refine_tr_refine(Candidate *Cand,
     
     int i, j, k, jk, sc, ind0, ind1, ind2, ind3, ind4, labi;
     int value, iend, newcell;
-    int HitClsInd, SplInd, SplCntInd, CStackInd, TraceInd, TraceCCInd, TraceStepsInd;
+    int HitClsInd, SplInd, SplCntInd, CStackInd;//   int HitClsInd, SplInd, SplCntInd, CStackInd, TraceInd, TraceCCInd, TraceStepsInd;
     int j1int, iend1int;
     unsigned int longcode;
-    int newtrace = FALSE;
+//    int newtrace = FALSE;
     int Sparse = TRUE;
-    int *lab, *cls, *InvLab, *TracePos, *SplitCell, *LabCell, TraceEnd, Traceccend, Tracestpend;
-    int BigCell, BigCellPos, BigCellSize;
-    boolean TraceCell = FALSE;
+    int *lab, *cls, *InvLab, *SplitCell, *LabCell;//int *lab, *cls, *InvLab, *TracePos, *SplitCell, *LabCell, TraceEnd, Traceccend, Tracestpend;
+    int BigCell = n, BigCellPos = n, BigCellSize = 0;
+//    boolean TraceCell = FALSE;
     int *nghb;
     const int variation = 0;
     int currentweight, weightstart, weightend, currentcell, currentsize;
@@ -4764,7 +4766,6 @@ void refine_tr_refine(Candidate *Cand,
     InvLab = Cand->invlab;
     cls = Part->cls;
     
-    UPDATEMIN(Part->active, n-1);
     memcpy(CStack+1, TheTrace, (Part->cells)*sizeof(int));
     CStackInd = Part->cells;
     
@@ -4773,7 +4774,7 @@ void refine_tr_refine(Candidate *Cand,
     }
     
     longcode = Part->cells;
-    newtrace = TRUE;
+//    newtrace = TRUE;
     while (CStackInd > 0) {
         
         weightend = 0;
@@ -6062,7 +6063,7 @@ int CheckForMatching(Candidate *CurrCand, Candidate *NextCand, Partition *Part, 
     int i, j, vtx, vtx1, temp, tmp1, tgt_level, numtemporbits, pos;
     TracesSpine *SpineTL;
     Candidate *CheckAutList;
-    int *cls;
+//    int *cls;
     searchtrie *TrieCandFrom, *TrieCheckFrom;
     boolean CodeVerify;
     
@@ -6070,7 +6071,7 @@ int CheckForMatching(Candidate *CurrCand, Candidate *NextCand, Partition *Part, 
     
     SpineTL = Spine+tv->tolevel;
     CheckAutList = SpineTL->liststart;
-    cls = Part->cls;
+//    cls = Part->cls;
     numtemporbits = 0;
     tv->gotonode = NULL;
     
@@ -6336,9 +6337,9 @@ void CodeClassify(int Level, int code, int cell) {
 
 void Complete(sparsegraph *sg_orig, Candidate *Cand, Partition *Part, int cell, TracesVars *tv,
               double *grpsize1, int *grpsize2, permnode **ring, int n) {
-    int i, j, k;
+    int i, k;    //int i, j, k;
     int arg, val;
-    int numtemporbits;
+//    int numtemporbits;
     k = cell + Part->cls[cell];
     
     if (tv->permInd) ResetAutom(tv->permInd, n, tv);
@@ -6369,7 +6370,8 @@ int CompStage0(Partition *CurrPart, Partition *NextPart, Candidate *CurrCand, Ca
                int n, struct TracesVars* tv, struct TracesInfo *ti) {
     int i, j, i1, j2, k, cu, cu1, num_indv;
     int temp, tmp, auxcode, search_vtx, gom_level;
-    boolean closeloop, firstsing, has_nexttcell;
+    int closeloop = 0;
+    boolean firstsing, has_nexttcell;
     Candidate *SpTLliststart, *AuxCand;
     searchtrie *TreeNode, *TreeNode1, *TreeNode2;
     
@@ -6883,8 +6885,8 @@ int CompStage0(Partition *CurrPart, Partition *NextPart, Candidate *CurrCand, Ca
 
 int CompStage1(Partition *CurrPart, Partition *NextPart, Candidate *CurrCand, Candidate *NextCand,
                int n, struct TracesVars* tv, struct TracesInfo *ti) {
-    int i, k, cu, cu1, tmp, gom_level, search_vtx, temp;
-    searchtrie *TreeNode, *TrieNode;
+    int i, k, cu, cu1, tmp, gom_level, search_vtx; //int i, k, cu, cu1, tmp, gom_level, search_vtx, temp;
+    searchtrie *TreeNode;   //searchtrie *TreeNode, *TrieNode;
     
 #ifdef NAUTY_IN_MAGMA
     if (main_seen_interrupt) return NAUTY_KILLED;
@@ -7074,9 +7076,9 @@ int CompStage2(Partition *CurrPart, Partition *NextPart, Candidate *CurrCand, Ca
     int temp, tmp, autom;
     Candidate *AuxCand;
     searchtrie *TreeNode, *TreeNode1, *TreeNode2;
-    int *CuOrb,*AuxOrb;
+    int *CuOrb;  //int *CuOrb,*AuxOrb;
     boolean has_nexttcell = FALSE;
-    searchtrie *TrieNode;
+//    searchtrie *TrieNode;
     boolean schreierwrong;
     
 #ifdef NAUTY_IN_MAGMA
@@ -7542,9 +7544,9 @@ void CopyCand(Candidate *W, Candidate *V,int n, int *lab, int *invlab) {
 }
 
 sparsegraph* copy_sg_structure(sparsegraph *sg2, sparsegraph *sg1) {
-    int *d1, *e1, *d2, *e2;
+    int *d1, *e1;    //int *d1, *e1, *d2, *e2;
     int i, n;
-    size_t *v1, *v2, k;
+    size_t *v1, k;   //size_t *v1, *v2, k;
     
     if (!sg2)
     {
@@ -8868,9 +8870,9 @@ void NonSingDegPlus2(Candidate *Cand, Partition *Part, int cell, TracesVars *tv)
     
     int *e_sing;
     int sing;
-    int k, deg1, singdeg, singcount;
-    
-    singcount = 0;
+    int k, deg1, singdeg; //int k, deg1, singdeg, singcount;
+
+//    singcount = 0;
     
     sing = Cand->lab[cell];
     singdeg = 0;
@@ -8979,6 +8981,7 @@ struct Partition *NewPartition(int n) {
     }
     P->code = -1;
     P->cells = 0;
+    P->active = 0;
     return P;
 }
 
@@ -9314,25 +9317,25 @@ void PrintWeightedGraph1(sparsegraph *g_arg, int n, char msg[30]) {
     printf("\n");
 }
 
-void PrintWeightedGraph2(int n, char msg[30]) {
-    int i, j;
-    int *ngh1, *wgh1;
-    
-    printf("%s\n",msg);
-    for (i=0; i<n; i++) {
-        ngh1 = TheGraph[i].e;
-        printf("%2d: ",i+labelorg);
-        for (j=0; j<TheGraph[i].d; j++) {
-            printf("%2d ",ngh1[j]+labelorg);
-        }
-        printf(";\n");
-    }
-    printf("\n");
-}
+//void PrintWeightedGraph2(int n, char msg[30]) {
+//    int i, j;
+//    int *ngh1, *wgh1;
+//    
+//    printf("%s\n",msg);
+//    for (i=0; i<n; i++) {
+//        ngh1 = TheGraph[i].e;
+//        printf("%2d: ",i+labelorg);
+//        for (j=0; j<TheGraph[i].d; j++) {
+//            printf("%2d ",ngh1[j]+labelorg);
+//        }
+//        printf(";\n");
+//    }
+//    printf("\n");
+//}
 
 void PrintBlissGraph(int n) {
     int i, j;
-    int *ngh1, *wgh1;
+    int *ngh1;  //int *ngh1, *wgh1;
     
     fprintf(outfile,"p edge %d\n",n);
     for (i=0; i<n; i++) {
@@ -10241,7 +10244,7 @@ void WeightCodes(int n) {
     int i,j,aux;
     int sumdegs;
     int deg, vtx1, vtx2, *ngh1, *ngh2, *wgh1, *wgh2, ord;
-    
+
     sumdegs = 0;
     for (i=0; i<n; i++) {
         sumdegs += TheGraph[i].d;

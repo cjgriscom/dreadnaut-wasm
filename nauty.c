@@ -1,9 +1,9 @@
 /*****************************************************************************
 *                                                                            *
-*  Main source file for version 2.7 of nauty.                                *
+*  Main source file for version 2.9 of nauty.                                *
 *                                                                            *
-*   Copyright (1984-2018) Brendan McKay.  All rights reserved.  Permission   *
-*   Subject to the waivers and disclaimers in nauty.h.                       *
+*   Copyright (1984-) Brendan McKay.                                         *
+*   Subject to the conditions and disclaimers in the file COPYRIGHT.         *
 *                                                                            *
 *   CHANGE HISTORY                                                           *
 *       10-Nov-87 : final changes for version 1.2                            *
@@ -646,6 +646,7 @@ firstpathnode(int *lab, int *ptn, int level, int numcells)
 
     /* use the elements of the target cell to produce the children: */
     index = 0;
+    childcount = 0;
     for (tv1 = tv = nextelement(tcell,M,-1); tv >= 0;
                                     tv = nextelement(tcell,M,tv))
     {

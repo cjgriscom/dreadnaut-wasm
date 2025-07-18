@@ -1,9 +1,8 @@
 /*****************************************************************************
 *                                                                            *
-*  Graph-specific auxiliary source file for version 2.8 of nauty.            *
+*  Graph-specific auxiliary source file for version 2.9 of nauty.            *
 *                                                                            *
-*   Copyright (1984-2019) Brendan McKay.  All rights reserved.               *
-*   Subject to waivers and disclaimers in nauty.h.                           *
+*   Subject to conditions and disclaimers in the file COPYRIGHT.             *
 *                                                                            *
 *   CHANGE HISTORY                                                           *
 *       16-Nov-00 : initial creation out of nautil.c                         *
@@ -203,6 +202,7 @@ refine(graph *g, int *lab, int *ptn, int level, int *numcells,
     longcode = *numcells;
     split1 = -1;
     hint = 0;
+    maxpos = 0;
     while (*numcells < n && ((split1 = hint, ISELEMENT(active,split1))
                          || (split1 = nextelement(active,M,split1)) >= 0
                          || (split1 = nextelement(active,M,-1)) >= 0))
@@ -357,6 +357,7 @@ refine1(graph *g, int *lab, int *ptn, int level, int *numcells,
 
     longcode = *numcells;
     split1 = -1;
+    maxpos = 0;
 
     hint = 0;
     while (*numcells < n && ((split1 = hint, ISELEMENT1(active,split1))
@@ -647,10 +648,23 @@ void
 densenauty(graph *g, int *lab, int *ptn, int *orbits,
            optionblk *options, statsblk *stats, int m, int n, graph *h)
 {
+    int i;
+    boolean digraph;
+    graph *gi;
+
     if (options->dispatch != &dispatch_graph)
     {
         fprintf(ERRFILE,"Error: densenauty() needs standard options block\n");
         exit(1);
+    }
+
+    digraph = options->digraph;
+    if (!digraph)
+    {
+        for (i = 0, gi = g; i < n; ++i, gi += m)
+            if (ISELEMENT(gi,i)) break;
+
+        if (i < n) options->digraph = TRUE;
     }
 
 #if !MAXN
@@ -660,6 +674,7 @@ densenauty(graph *g, int *lab, int *ptn, int *orbits,
 #endif
 
     nauty(g,lab,ptn,NULL,orbits,options,stats,dnwork,2*500*m,m,n,h);
+    options->digraph = digraph;
 }
 
 /*****************************************************************************

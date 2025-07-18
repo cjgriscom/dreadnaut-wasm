@@ -274,7 +274,7 @@ static set_t set_new(int size) {
  *
  * Free the memory associated with set s.
  */
-UNUSED_FUNCTION INLINE
+UNUSED_FUNCTION 
 static void set_free(set_t s) {
 	ASSERT(s!=NULL);
 	free(&(s[-1]));
@@ -288,7 +288,7 @@ static void set_free(set_t s) {
  *
  * Returns a pointer to the new set.
  */
-UNUSED_FUNCTION INLINE
+UNUSED_FUNCTION 
 static set_t set_resize(set_t s, int size) {
 	int n;
 
@@ -313,7 +313,7 @@ static set_t set_resize(set_t s, int size) {
  *
  * Returns the number of elements in set s.
  */
-UNUSED_FUNCTION INLINE
+UNUSED_FUNCTION 
 static int set_size(set_t s) {
 	int count=0;
 	setelement *c;
@@ -328,7 +328,7 @@ static int set_size(set_t s) {
  *
  * Returns a newly allocated duplicate of set s.
  */
-UNUSED_FUNCTION INLINE
+UNUSED_FUNCTION 
 static set_t set_duplicate(set_t s) {
 	set_t new;
 
@@ -344,7 +344,7 @@ static set_t set_duplicate(set_t s) {
  * If dest smaller than src, it is freed and a new set of the same size as
  * src is returned.
  */
-UNUSED_FUNCTION INLINE
+UNUSED_FUNCTION 
 static set_t set_copy(set_t dest,set_t src) {
 	if (dest==NULL)
 		return set_duplicate(src);
@@ -364,7 +364,7 @@ static set_t set_copy(set_t dest,set_t src) {
  *
  * Removes all elements from the set s.
  */
-UNUSED_FUNCTION INLINE
+UNUSED_FUNCTION 
 static void set_empty(set_t s) {
 	memset(s,0,SET_ARRAY_LENGTH(s)*sizeof(setelement));
 	return;
@@ -382,7 +382,7 @@ static void set_empty(set_t s) {
  *
  * Note:  res may not be a or b.
  */
-UNUSED_FUNCTION INLINE
+UNUSED_FUNCTION 
 static set_t set_intersection(set_t res,set_t a,set_t b) {
 	int i,max;
 
@@ -415,7 +415,7 @@ static set_t set_intersection(set_t res,set_t a,set_t b) {
  *
  * Note:  res may not be a or b.
  */
-UNUSED_FUNCTION INLINE
+UNUSED_FUNCTION 
 static set_t set_union(set_t res,set_t a,set_t b) {
 	int i,max;
 
@@ -450,7 +450,7 @@ static set_t set_union(set_t res,set_t a,set_t b) {
  *         // i is in set s
  * }
  */
-UNUSED_FUNCTION INLINE
+UNUSED_FUNCTION 
 static int set_return_next(set_t s, int n) {
 	if (n<0)
 		n=0;
@@ -523,28 +523,26 @@ struct _graph_t {
 } while (FALSE)
 
 
-extern graph_t *graph_new(int n);
-extern void graph_free(graph_t *g);
-extern void graph_resize(graph_t *g, int size);
-extern void graph_crop(graph_t *g);
+graph_t *graph_new(int n);
+void graph_free(graph_t *g);
+void graph_resize(graph_t *g, int size);
+void graph_crop(graph_t *g);
 
-extern boolean graph_weighted(graph_t *g);
-extern int graph_edge_count(graph_t *g);
+boolean graph_weighted(graph_t *g);
+int graph_edge_count(graph_t *g);
 
-extern graph_t *graph_read_dimacs(FILE *fp);
-extern graph_t *graph_read_dimacs_file(char *file);
-extern boolean graph_write_dimacs_ascii(graph_t *g, char *comment,FILE *fp);
-extern boolean graph_write_dimacs_ascii_file(graph_t *g,char *comment,
-					     char *file);
-extern boolean graph_write_dimacs_binary(graph_t *g, char *comment,FILE *fp);
-extern boolean graph_write_dimacs_binary_file(graph_t *g, char *comment,
-					      char *file);
+graph_t *graph_read_dimacs(FILE *fp);
+graph_t *graph_read_dimacs_file(char *file);
+boolean graph_write_dimacs_ascii(graph_t *g, char *comment,FILE *fp);
+boolean graph_write_dimacs_ascii_file(graph_t *g,char *comment,char *file);
+boolean graph_write_dimacs_binary(graph_t *g, char *comment,FILE *fp);
+boolean graph_write_dimacs_binary_file(graph_t *g, char *comment,char *file);
 
-extern void graph_print(graph_t *g);
-extern boolean graph_test(graph_t *g, FILE *output);
-extern int graph_test_regular(graph_t *g);
+void graph_print(graph_t *g);
+boolean graph_test(graph_t *g, FILE *output);
+int graph_test_regular(graph_t *g);
 
-UNUSED_FUNCTION INLINE
+UNUSED_FUNCTION 
 static int graph_subgraph_weight(graph_t *g,set_t s) {
 	int i,j;
 	int count=0;
@@ -563,7 +561,7 @@ static int graph_subgraph_weight(graph_t *g,set_t s) {
 	return count;
 }
 
-UNUSED_FUNCTION INLINE
+UNUSED_FUNCTION 
 static int graph_vertex_degree(graph_t *g, int v) {
 	return set_size(g->edges[v]);
 }
@@ -572,23 +570,23 @@ static int graph_vertex_degree(graph_t *g, int v) {
 #include "reorder.h"
 */
 
-extern void reorder_set(set_t s,int *order);
-extern void reorder_graph(graph_t *g, int *order);
-extern int *reorder_duplicate(int *order,int n);
-extern void reorder_invert(int *order,int n);
-extern void reorder_reverse(int *order,int n);
-extern int *reorder_ident(int n);
-extern boolean reorder_is_bijection(int *order,int n);
+void reorder_set(set_t s,int *order);
+void reorder_graph(graph_t *g, int *order);
+int *reorder_duplicate(int *order,int n);
+void reorder_invert(int *order,int n);
+void reorder_reverse(int *order,int n);
+int *reorder_ident(int n);
+boolean reorder_is_bijection(int *order,int n);
 
 
 #define reorder_by_default reorder_by_greedy_coloring
-extern int *reorder_by_greedy_coloring(graph_t *g, boolean weighted);
-extern int *reorder_by_weighted_greedy_coloring(graph_t *g, boolean weighted);
-extern int *reorder_by_unweighted_greedy_coloring(graph_t *g,boolean weighted);
-extern int *reorder_by_degree(graph_t *g, boolean weighted);
-extern int *reorder_by_random(graph_t *g, boolean weighted);
-extern int *reorder_by_ident(graph_t *g, boolean weighted);
-extern int *reorder_by_reverse(graph_t *g, boolean weighted);
+int *reorder_by_greedy_coloring(graph_t *g, boolean weighted);
+int *reorder_by_weighted_greedy_coloring(graph_t *g, boolean weighted);
+int *reorder_by_unweighted_greedy_coloring(graph_t *g,boolean weighted);
+int *reorder_by_degree(graph_t *g, boolean weighted);
+int *reorder_by_random(graph_t *g, boolean weighted);
+int *reorder_by_ident(graph_t *g, boolean weighted);
+int *reorder_by_reverse(graph_t *g, boolean weighted);
 
 
 typedef struct _clique_options clique_options;
@@ -610,26 +608,26 @@ struct _clique_options {
 extern clique_options *clique_default_options;
 
 /* Weighted clique functions */
-extern int clique_max_weight(graph_t *g,clique_options *opts);
-extern set_t clique_find_single(graph_t *g,int min_weight,int max_weight,
+int clique_max_weight(graph_t *g,clique_options *opts);
+set_t clique_find_single(graph_t *g,int min_weight,int max_weight,
 				boolean maximal, clique_options *opts);
-extern int clique_find_all(graph_t *g, int req_weight, boolean exact,
+int clique_find_all(graph_t *g, int req_weight, boolean exact,
 			   boolean maximal, clique_options *opts);
 
 /* Unweighted clique functions */
 #define clique_unweighted_max_size clique_unweighted_max_weight
-extern int clique_unweighted_max_weight(graph_t *g, clique_options *opts);
-extern set_t clique_unweighted_find_single(graph_t *g,int min_size,
+int clique_unweighted_max_weight(graph_t *g, clique_options *opts);
+set_t clique_unweighted_find_single(graph_t *g,int min_size,
 					   int max_size,boolean maximal,
 					   clique_options *opts);
-extern int clique_unweighted_find_all(graph_t *g, int min_size, int max_size,
+int clique_unweighted_find_all(graph_t *g, int min_size, int max_size,
 				      boolean maximal, clique_options *opts);
 
 /* Time printing functions */
-extern boolean clique_print_time(int level, int i, int n, int max,
+boolean clique_print_time(int level, int i, int n, int max,
 				 double cputime, double realtime,
 				 clique_options *opts);
-extern boolean clique_print_time_always(int level, int i, int n, int max,
+boolean clique_print_time_always(int level, int i, int n, int max,
 					double cputime, double realtime,
 					clique_options *opts);
 
@@ -639,9 +637,9 @@ extern boolean clique_print_time_always(int level, int i, int n, int max,
 #define cliquer_default_options clique_default_options
 
 /* Procedures defined in nautycliquer.c */
-extern int find_clique(graph *g, int m, int n,
+int find_clique(graph *g, int m, int n,
 				     int min, int max, boolean maximal);
-extern int find_indset(graph *g, int m, int n,
+int find_indset(graph *g, int m, int n,
 				     int min, int max, boolean maximal);
 
 #endif /* !NAUTYCLIQUER_H */

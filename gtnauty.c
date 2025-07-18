@@ -794,6 +794,7 @@ istransitive(graph *g, int m, int n, graph *h)
     DYNALLOC1(set,frontier,frontier_sz,m,"istransitive");
 #endif
 
+    inv0 = 0;
     for (v = 0; v < n; ++v)
     {
         inv = 0;
@@ -895,6 +896,7 @@ tg_canonise(graph *g, graph *h, int m, int n)
     }
     ptn[0] = ptn[n-1] = 0;
 
+    active[0] = 0;
     EMPTYSET(active,m);
     ADDELEMENT(active,0);
 

@@ -187,7 +187,7 @@ colornext1(graph *g, int n, int numsofar, int numcolors, int *color1,
           int *minsofar, setword *uncoloured, int minchi)
 {
     int i,j;
-    int vtocolour,maxnumcols;
+    int vtocolour=0,maxnumcols;
     int numnay,maxnay;
     int newnumcols;
     setword w;
@@ -426,6 +426,7 @@ colornext(graph *g, int m, int n, int numsofar, int numcolors, int *color,
         if (numcolors < *minsofar) *minsofar = numcolors;
         return;
     }
+    vtocolour = 0;
 
 #if 0
     maxnumcols = WORDSIZE-1;
@@ -458,7 +459,6 @@ colornext(graph *g, int m, int n, int numsofar, int numcolors, int *color,
         newnumcols = (i==numcolors) ? numcolors + 1 : numcolors;
 
         if (newnumcols >= *minsofar) return;
-        // if (newnumcols > minchi) return;
 
         color[vtocolour] = i;
         DELELEMENT(uncoloured,vtocolour);

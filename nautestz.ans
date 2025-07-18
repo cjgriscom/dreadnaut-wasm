@@ -1,0 +1,37 @@
+        793 graphs : n=3; mindeg=2; e=3
+        264 graphs : n=5; mindeg=2; e=5
+        469 graphs : n=5; mindeg=2; e=6
+        130 graphs : n=6; mindeg=2; e=6
+        950 graphs : n=6; mindeg=2; e=7
+         52 graphs : n=7; mindeg=2; e=7
+        853 graphs : n=7; mindeg=2; e=8
+        943 graphs : n=7; mindeg=2; e=9
+         17 graphs : n=8; mindeg=2; e=8
+        558 graphs : n=8; mindeg=2; e=9
+       1650 graphs : n=8; mindeg=2; e=10
+        529 graphs : n=8; mindeg=2; e=11
+          6 graphs : n=9; mindeg=2; e=9
+        258 graphs : n=9; mindeg=2; e=10
+       1443 graphs : n=9; mindeg=2; e=11
+       1750 graphs : n=9; mindeg=2; e=12
+        344 graphs : n=9; mindeg=2; e=13
+          1 graphs : n=10; mindeg=2; e=10
+         74 graphs : n=10; mindeg=2; e=11
+        684 graphs : n=10; mindeg=2; e=12
+       1797 graphs : n=10; mindeg=2; e=13
+       1335 graphs : n=10; mindeg=2; e=14
+        227 graphs : n=10; mindeg=2; e=15
+          7 graphs : n=10; mindeg=3; e=15
+          7 graphs : n=10; mindeg=3; e=16
+          1 graphs : n=11; mindeg=2; e=11
+         19 graphs : n=11; mindeg=2; e=12
+        191 graphs : n=11; mindeg=2; e=13
+        777 graphs : n=11; mindeg=2; e=14
+       1253 graphs : n=11; mindeg=2; e=15
+        735 graphs : n=11; mindeg=2; e=16
+        134 graphs : n=11; mindeg=2; e=17
+          7 graphs : n=11; mindeg=2; e=18
+          5 graphs : n=11; mindeg=3; e=17
+          4 graphs : n=11; mindeg=3; e=18
+ 18267 graphs altogether; cpu=0.01 sec
+>A ./countg --n,d,e

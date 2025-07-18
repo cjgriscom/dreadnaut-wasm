@@ -32,16 +32,23 @@ used, it is necessary to check they are correct.
 #define HAVE_FORK @have_fork@   /* fork() exists */
 #define HAVE_SIGNAL_H  @header_signal_h@      /* <signal.h> exists */
 #define HAVE_FSEEKO @have_fseeko@  /* fseeko() and ftello() exist */
+#define FSEEKO_DEC @fseeko_dec@  /* fseeko() and ftello() declared */
 #define HAVE_SIGACTION @have_sigaction@  /* sigaction() exists */
 #define HAVE_SIGPROCMASK @have_sigprocmask@  /* sigprocmask() exists */
 #define ALLOW_INTERRUPT @allow_interrupt@ /* no --disable-interrupt */
 #define HAVE_GUNZIP @have_gunzip@ /* gunzip program is available */
+#define SIGALTSTACK_DEC @sigaltstack_dec@
+                /* sigaltstack() declared with _POSIX_C_SOURCE */
 
 #define HAVE_CRYPTO @have_crypto@  /* crypto library available */
 
 /* @edit_msg@ */
 
 /*==================================================================*/
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 #ifndef MAXN 
 #define MAXN  0
@@ -73,10 +80,6 @@ extern int errno;
 
 #if HAVE_WAIT_H && !defined(AVOID_SYS_WAIT_H)
 #include <sys/wait.h>
-#endif
-
-#if HAVE_SIGNAL_H
-#include <signal.h>
 #endif
 
 #if HAVE_PERROR
@@ -122,6 +125,16 @@ int setenv(const char*,const char*,int);
 #else
 #define FLOCKFILE(f)
 #define FUNLOCKFILE(f)
+#endif
+
+#if HAVE_FSEEKO && !FSEEKO_DEC
+int fseeko(FILE *stream, off_t offset, int whence);
+off_t ftello(FILE *stream);
+#endif
+
+#if HAVE_POPEN && !POPEN_DEC
+FILE *popen(const char*,const char*);
+int pclose(FILE*);
 #endif
 
 #if HAS_STDIO_UNLOCK && !defined(NAUTY_IN_MAGMA) && !defined(IS_JAVA)
@@ -246,84 +259,79 @@ fprintf(stderr,"   Use %s -help to see more detailed instructions.\n",argv[0])
 
 /* @edit_msg@ */
 
-#ifdef __cplusplus
-extern "C" {
-#endif
  
-extern void gtools_check(int,int,int,int);
-extern FILE *opengraphfile(char*,int*,boolean,long);
-extern void writeline(FILE*,char*);
-extern char *gtools_getline(FILE*);     /* formerly getline() */
-extern int graphsize(char*);
-extern void encodegraphsize(int,char**);
-extern void stringcounts(char*,int*,size_t*);
-extern void stringtograph(char*,graph*,int);
-extern void stringtograph_inc(char*,graph*,int,graph*,int);
-extern size_t edgecount(char*);
-extern int checkgline(char*);
-extern graph *readgg(FILE*,graph*,int,int*,int*,boolean*);
-extern graph *readg_loops(FILE*,graph*,int,int*,int*,int*,boolean*);
-extern graph *readg(FILE*,graph*,int,int*,int*);
-extern graph *readgg_inc(FILE*,graph*,int,int*,int*,graph*,int,int,boolean*);
-extern graph *readg_inc(FILE*,graph*,int,int*,int*,graph*,int,int);
-extern char *ntog6(graph*,int,int);
-extern char *ntos6(graph*,int,int);
-extern char *ntod6(graph*,int,int);
-extern char *sgtos6(sparsegraph*);
-extern char *sgtog6(sparsegraph*);
-extern char *sgtod6(sparsegraph*);
-extern void writeg6(FILE*,graph*,int,int);
-extern void writed6(FILE*,graph*,int,int);
-extern void writes6(FILE*,graph*,int,int);
-extern void writeg6_sg(FILE*,sparsegraph*);
-extern void writes6_sg(FILE*,sparsegraph*);
-extern void writed6_sg(FILE*,sparsegraph*);
-extern char *ntois6(graph*,graph*,int,int);
-extern void writeis6(FILE*,graph*,graph*,int,int);
-extern void writepc_sg(FILE*,sparsegraph*);
-extern void stringtosparsegraph(char*,sparsegraph*,int*);
-extern sparsegraph *read_sg(FILE*,sparsegraph*);
-extern sparsegraph *read_sg_loops(FILE*,sparsegraph*,int*);
-extern sparsegraph *read_sgg_loops(FILE*,sparsegraph*,int*,boolean*);
-extern sparsegraph *readpc_sg(FILE*,sparsegraph*);
-extern sparsegraph *readpcle_sg(FILE*,sparsegraph*);
-extern char *getecline(FILE*);
-extern void writelast(FILE*);
-extern int longvalue(char**,long*);
-extern int ullvalue(char**,unsigned long long*);
-extern void arg_int(char**,int*,char*);
-extern void arg_long(char**,long*,char*);
-extern void arg_ull(char**,unsigned long long*,char*);
-extern void arg_range(char**,char*,long*,long*,char*);
-extern int doublevalue(char**,double*);
-extern void arg_double(char**,double*,char*);
-extern void arg_doublerange(char**,char*,double*,double*,char*);
-extern void arg_sequence(char**,char*,long*,int,int*,char*);
-extern void arg_sequence_min(char**,char*,long*,int,int,int*,char*);
+void gtools_check(int,int,int,int);
+FILE *opengraphfile(char*,int*,boolean,long);
+void writeline(FILE*,char*);
+char *gtools_getline(FILE*);     /* formerly getline() */
+int graphsize(char*);
+void encodegraphsize(int,char**);
+void stringcounts(char*,int*,size_t*);
+void stringtograph(char*,graph*,int);
+void stringtograph_inc(char*,graph*,int,graph*,int);
+size_t edgecount(char*);
+int checkgline(char*);
+graph *readgg(FILE*,graph*,int,int*,int*,boolean*);
+graph *readg_loops(FILE*,graph*,int,int*,int*,int*,boolean*);
+graph *readg(FILE*,graph*,int,int*,int*);
+graph *readgg_inc(FILE*,graph*,int,int*,int*,graph*,int,int,boolean*);
+graph *readg_inc(FILE*,graph*,int,int*,int*,graph*,int,int);
+char *ntog6(graph*,int,int);
+char *ntos6(graph*,int,int);
+char *ntod6(graph*,int,int);
+char *sgtos6(sparsegraph*);
+char *sgtog6(sparsegraph*);
+char *sgtod6(sparsegraph*);
+void writeg6(FILE*,graph*,int,int);
+void writed6(FILE*,graph*,int,int);
+void writes6(FILE*,graph*,int,int);
+void writeg6_sg(FILE*,sparsegraph*);
+void writes6_sg(FILE*,sparsegraph*);
+void writed6_sg(FILE*,sparsegraph*);
+char *ntois6(graph*,graph*,int,int);
+void writeis6(FILE*,graph*,graph*,int,int);
+void writepc_sg(FILE*,sparsegraph*);
+void stringtosparsegraph(char*,sparsegraph*,int*);
+sparsegraph *read_sg(FILE*,sparsegraph*);
+sparsegraph *read_sg_loops(FILE*,sparsegraph*,int*);
+sparsegraph *read_sgg_loops(FILE*,sparsegraph*,int*,boolean*);
+sparsegraph *readpc_sg(FILE*,sparsegraph*);
+sparsegraph *readpcle_sg(FILE*,sparsegraph*);
+char *getecline(FILE*);
+void writelast(FILE*);
+int longvalue(char**,long*);
+int ullvalue(char**,unsigned long long*);
+void arg_int(char**,int*,char*);
+void arg_long(char**,long*,char*);
+void arg_ull(char**,unsigned long long*,char*);
+void arg_range(char**,char*,long*,long*,char*);
+int doublevalue(char**,double*);
+void arg_double(char**,double*,char*);
+void arg_doublerange(char**,char*,double*,double*,char*);
+void arg_sequence(char**,char*,long*,int,int*,char*);
+void arg_sequence_min(char**,char*,long*,int,int,int*,char*);
 
-extern void writerange(FILE*,int,long,long);
-extern void NORET_ATTR gt_abort(const char*);
-extern char *stringcopy(char*);
-extern boolean strhaschar(char*,int);
+void writerange(FILE*,int,long,long);
+NORET_ATTR void gt_abort(const char*);
+char *stringcopy(char*);
+boolean strhaschar(char*,int);
 
-extern void fcanonise(graph*,int,int,graph*,char*,boolean);
-extern void fcanonise_inv
-             (graph*,int,int,graph*,char*,void(*)(graph*,int*,int*,int,
+void fcanonise(graph*,int,int,graph*,char*,boolean);
+void fcanonise_inv(graph*,int,int,graph*,char*,void(*)(graph*,int*,int*,int,
                int,int,int*,int,boolean,int,int),int,int,int,boolean);
-extern void fcanonise_inv_sg
+void fcanonise_inv_sg
            (sparsegraph*,int,int,sparsegraph*,char*,void(*)(graph*,int*,int*,
              int,int,int,int*,int,boolean,int,int),int,int,int,boolean);
-extern void setlabptn(int*,int*,int*,int);
-extern int breakcellwt(int*,int*,int*,int,int);
-extern int setlabptnfmt(char*,int*,int*,set*,int,int);
+void setlabptn(int*,int*,int*,int);
+int breakcellwt(int*,int*,int*,int,int);
+int setlabptnfmt(char*,int*,int*,set*,int,int);
 
-extern void fgroup(graph*,int,int,char*,int*,int*);
-extern void fgroup_inv
-             (graph*,int,int,char*,int*,int*,void(*)(graph*,int*,int*,int,
+void fgroup(graph*,int,int,char*,int*,int*);
+void fgroup_inv(graph*,int,int,char*,int*,int*,void(*)(graph*,int*,int*,int,
                 int,int,int*,int,boolean,int,int),int,int,int);
-extern int istransitive(graph*,int,int,graph*);
-extern void tg_canonise(graph*,graph*,int,int);
-extern void countorbits(graph*,int,int,boolean,double*,int*,
+int istransitive(graph*,int,int,graph*);
+void tg_canonise(graph*,graph*,int,int);
+void countorbits(graph*,int,int,boolean,double*,int*,
          int*,int*,size_t*,size_t*);
 
 extern TLS_ATTR int readg_code;

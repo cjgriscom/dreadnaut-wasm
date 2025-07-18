@@ -235,219 +235,219 @@ extern "C" {
  */
 
 /* aproto: file embed_graph/sparseg_adjl_pred.c */
-extern boolean sparseg_adjl_dir_edge_exists (t_ver_sparse_rep *, int, t_adjl_sparse_rep *, int, int);
-extern boolean sparseg_adjl_u_adj_v (t_ver_sparse_rep *, int, t_adjl_sparse_rep *, int, int);
-extern boolean sparseg_adjl_sub (t_ver_sparse_rep *, int, t_adjl_sparse_rep *, t_ver_sparse_rep *, int, t_adjl_sparse_rep *);
-extern boolean sparseg_adjl_eq (t_ver_sparse_rep *, int, t_adjl_sparse_rep *, t_ver_sparse_rep *, int, t_adjl_sparse_rep *);
+boolean sparseg_adjl_dir_edge_exists (t_ver_sparse_rep *, int, t_adjl_sparse_rep *, int, int);
+boolean sparseg_adjl_u_adj_v (t_ver_sparse_rep *, int, t_adjl_sparse_rep *, int, int);
+boolean sparseg_adjl_sub (t_ver_sparse_rep *, int, t_adjl_sparse_rep *, t_ver_sparse_rep *, int, t_adjl_sparse_rep *);
+boolean sparseg_adjl_eq (t_ver_sparse_rep *, int, t_adjl_sparse_rep *, t_ver_sparse_rep *, int, t_adjl_sparse_rep *);
 /* aproto: endfile */
 /* aproto: file embed_graph/VES_misc.c */
-extern boolean embedg_VES_is_vertex (int, int);
-extern boolean embedg_VES_is_virtual_vertex (int, int);
-extern boolean embedg_VES_is_edge (int, int);
-extern boolean embedg_VES_is_tree_edge (t_ver_edge *, int, int);
-extern boolean embedg_VES_is_back_edge (t_ver_edge *, int, int);
-extern boolean embedg_VES_is_short_cut_edge (t_ver_edge *, int, int);
-extern void embedg_VES_print_vertex (int, int);
-extern void embedg_VES_print_virtual_vertex (t_ver_edge *, int, int);
-extern void embedg_VES_print_any_vertex (t_ver_edge *, int, int);
-extern void embedg_VES_print_any_rec (t_ver_edge *, int, int);
-extern void embedg_VES_print_edge (t_ver_edge *, int, int);
-extern void embedg_VES_print_flipped_edges (t_ver_edge *, int, int);
-extern int embedg_VES_get_edge_from_ver (t_ver_edge *, int, int);
-extern int embedg_VES_get_ver_from_edge (t_ver_edge *, int, int);
-extern int embedg_VES_get_twin_edge (t_ver_edge *, int, int);
-extern int embedg_VES_get_ver_from_virtual (t_ver_edge *, int, int);
-extern int embedg_VES_get_ver (t_ver_edge *, int, int);
-extern int embedg_VES_get_next_in_dlcl (t_ver_edge *, int, int, int);
-extern void embedg_VES_walk_bicomp (t_ver_edge *, int, int, int);
-extern void embedg_VES_print_adj_list (t_ver_edge *, int, int, boolean);
-extern boolean embedg_VES_is_adj_list_consistent (t_ver_edge *, int, int);
-extern boolean embedg_VES_are_adj_lists_consistent (t_ver_edge *, int);
-extern void embedg_VES_remove_edge (t_ver_edge *, int, int);
-extern void embedg_VES_set_orientation (t_ver_edge *, int, int *);
+boolean embedg_VES_is_vertex (int, int);
+boolean embedg_VES_is_virtual_vertex (int, int);
+boolean embedg_VES_is_edge (int, int);
+boolean embedg_VES_is_tree_edge (t_ver_edge *, int, int);
+boolean embedg_VES_is_back_edge (t_ver_edge *, int, int);
+boolean embedg_VES_is_short_cut_edge (t_ver_edge *, int, int);
+void embedg_VES_print_vertex (int, int);
+void embedg_VES_print_virtual_vertex (t_ver_edge *, int, int);
+void embedg_VES_print_any_vertex (t_ver_edge *, int, int);
+void embedg_VES_print_any_rec (t_ver_edge *, int, int);
+void embedg_VES_print_edge (t_ver_edge *, int, int);
+void embedg_VES_print_flipped_edges (t_ver_edge *, int, int);
+int embedg_VES_get_edge_from_ver (t_ver_edge *, int, int);
+int embedg_VES_get_ver_from_edge (t_ver_edge *, int, int);
+int embedg_VES_get_twin_edge (t_ver_edge *, int, int);
+int embedg_VES_get_ver_from_virtual (t_ver_edge *, int, int);
+int embedg_VES_get_ver (t_ver_edge *, int, int);
+int embedg_VES_get_next_in_dlcl (t_ver_edge *, int, int, int);
+void embedg_VES_walk_bicomp (t_ver_edge *, int, int, int);
+void embedg_VES_print_adj_list (t_ver_edge *, int, int, boolean);
+boolean embedg_VES_is_adj_list_consistent (t_ver_edge *, int, int);
+boolean embedg_VES_are_adj_lists_consistent (t_ver_edge *, int);
+void embedg_VES_remove_edge (t_ver_edge *, int, int);
+void embedg_VES_set_orientation (t_ver_edge *, int, int *);
 /* aproto: endfile */
 /* aproto: file embed_graph/embed_edge.c */
-extern void embedg_VES_embed_edge (t_ver_edge *, int, int *, int, int, int, int, int);
-extern void embedg_VES_add_edge (t_ver_edge *, int, int *, int, int, boolean, int);
+void embedg_VES_embed_edge (t_ver_edge *, int, int *, int, int, int, int, int);
+void embedg_VES_add_edge (t_ver_edge *, int, int *, int, int, boolean, int);
 /* aproto: endfile */
 /* aproto: file embed_graph/embedg_misc.c */
-extern void embedg_VES_delete (t_ver_edge *, int);
-extern void embedg_VES_print (t_ver_edge *, int);
-extern void embedg_VES_print_bigcomps (t_ver_edge *, int);
+void embedg_VES_delete (t_ver_edge *, int);
+void embedg_VES_print (t_ver_edge *, int);
+void embedg_VES_print_bigcomps (t_ver_edge *, int);
 /* aproto: endfile */
 /* aproto: file embed_graph/ext_face_walk.c */
-extern void embedg_VES_get_succ_on_ext_face (t_ver_edge *, int, int, int, boolean, int, int *, int *);
-extern void embedg_VES_get_succ_active_on_ext_face (t_ver_edge *, int, int, int, int, boolean, int, int *, int *);
-extern void embedg_VES_get_succ_ext_active_on_ext_face (t_ver_edge *, int, int, int, int, boolean, int, int *, int *);
-extern void embedg_VES_get_succ_pertinent_on_ext_face (t_ver_edge *, int, int, int, int, boolean, int, int *, int *);
+void embedg_VES_get_succ_on_ext_face (t_ver_edge *, int, int, int, boolean, int, int *, int *);
+void embedg_VES_get_succ_active_on_ext_face (t_ver_edge *, int, int, int, int, boolean, int, int *, int *);
+void embedg_VES_get_succ_ext_active_on_ext_face (t_ver_edge *, int, int, int, int, boolean, int, int *, int *);
+void embedg_VES_get_succ_pertinent_on_ext_face (t_ver_edge *, int, int, int, int, boolean, int, int *, int *);
 /* aproto: endfile */
 /* aproto: file embed_graph/isolator.c */
-extern int embedg_iso_get_c_of_v (t_ver_edge *, int, int, int);
-extern boolean embedg_iso_is_minor_A (t_ver_edge *, int, int *, int, int, int *);
-extern void embedg_iso_get_x_y_w (t_ver_edge *, int, int, int, int, int, int, int, int *, int *, int *);
-extern boolean embedg_iso_is_minor_B (t_ver_edge *, int, int *, int, int, int *, int *, int *);
-extern void embedg_iso_get_highest_x_y_path (t_ver_edge *, int, int, int, int, int, int, int, int, int, int **, int **, int *, int *, boolean *, boolean *, boolean *);
+int embedg_iso_get_c_of_v (t_ver_edge *, int, int, int);
+boolean embedg_iso_is_minor_A (t_ver_edge *, int, int *, int, int, int *);
+void embedg_iso_get_x_y_w (t_ver_edge *, int, int, int, int, int, int, int, int *, int *, int *);
+boolean embedg_iso_is_minor_B (t_ver_edge *, int, int *, int, int, int *, int *, int *);
+void embedg_iso_get_highest_x_y_path (t_ver_edge *, int, int, int, int, int, int, int, int, int, int **, int **, int *, int *, boolean *, boolean *, boolean *);
 /* aproto: endfile */
 /* aproto: file embed_graph/mark_kur.c */
-extern boolean embedg_VES_is_ext_face_marked (t_ver_edge *, int, int, int);
-extern void embedg_mark_minor_A (t_dlcl **, t_dlcl **, t_ver_edge *, int, int *, int, int, int);
-extern void embedg_mark_minor_B (t_dlcl **, t_dlcl **, t_ver_edge *, int, int *, int, int, int, int, int);
-extern void embedg_mark_minor_C (t_dlcl **, t_dlcl **, t_ver_edge *, int, int *, int, int, int, int, int, int *, int *, int, boolean, boolean);
-extern void embedg_mark_minor_D (t_dlcl **, t_dlcl **, t_ver_edge *, int, int *, int, int, int, int, int, int *, int *, int, int);
-extern minor embedg_mark_minor_E (t_dlcl **, t_dlcl **, t_ver_edge *, int, int *, int, int, int, int, int, int *, int *, int);
+boolean embedg_VES_is_ext_face_marked (t_ver_edge *, int, int, int);
+void embedg_mark_minor_A (t_dlcl **, t_dlcl **, t_ver_edge *, int, int *, int, int, int);
+void embedg_mark_minor_B (t_dlcl **, t_dlcl **, t_ver_edge *, int, int *, int, int, int, int, int);
+void embedg_mark_minor_C (t_dlcl **, t_dlcl **, t_ver_edge *, int, int *, int, int, int, int, int, int *, int *, int, boolean, boolean);
+void embedg_mark_minor_D (t_dlcl **, t_dlcl **, t_ver_edge *, int, int *, int, int, int, int, int, int *, int *, int, int);
+minor embedg_mark_minor_E (t_dlcl **, t_dlcl **, t_ver_edge *, int, int *, int, int, int, int, int, int *, int *, int);
 /* aproto: endfile */
 /* aproto: file embed_graph/merge_bicomps.c */
-extern void embedg_VES_merge_simple_bicomps (t_ver_edge *, int, int, int, int, int);
-extern void embedg_VES_merge_pertinent_bicomps (t_ver_edge *, int, int, int, int, int);
+void embedg_VES_merge_simple_bicomps (t_ver_edge *, int, int, int, int, int);
+void embedg_VES_merge_pertinent_bicomps (t_ver_edge *, int, int, int, int, int);
 /* aproto: endfile */
 /* aproto: file embed_graph/merge_queue_misc.c */
-extern t_merge_queue embedg_merge_queue_new (int);
-extern void embedg_merge_queue_delete (t_merge_queue);
-extern boolean embedg_merge_queue_empty (t_merge_queue);
-extern void embedg_merge_queue_print (t_merge_queue);
-extern void embedg_merge_queue_append (t_merge_queue *, t_ver_edge *, int, int, int, int, int);
-extern void embedg_merge_queue_append_vertex (t_merge_queue *, t_ver_edge *, int, int, int);
-extern void embedg_merge_queue_append_virtual_vertex (t_merge_queue *, t_ver_edge *, int, int, int);
-extern void embedg_merge_queue_get (t_merge_queue *, int *, int *, int *, int *);
-extern void embedg_merge_queue_prune (t_merge_queue *, int *, int *, int *, int *);
+t_merge_queue embedg_merge_queue_new (int);
+void embedg_merge_queue_delete (t_merge_queue);
+boolean embedg_merge_queue_empty (t_merge_queue);
+void embedg_merge_queue_print (t_merge_queue);
+void embedg_merge_queue_append (t_merge_queue *, t_ver_edge *, int, int, int, int, int);
+void embedg_merge_queue_append_vertex (t_merge_queue *, t_ver_edge *, int, int, int);
+void embedg_merge_queue_append_virtual_vertex (t_merge_queue *, t_ver_edge *, int, int, int);
+void embedg_merge_queue_get (t_merge_queue *, int *, int *, int *, int *);
+void embedg_merge_queue_prune (t_merge_queue *, int *, int *, int *, int *);
 /* aproto: endfile */
 /* aproto: file embed_graph/obstruction.c */
-extern void embedg_obstruction (t_ver_sparse_rep *, t_adjl_sparse_rep *, t_dlcl **, t_dlcl **, t_ver_edge *, int, int *, int, int, t_ver_sparse_rep **, t_adjl_sparse_rep **, int *);
-extern minor embedg_mark_obstruction (t_dlcl **, t_dlcl **, t_ver_edge *, int, int *, int, int);
+void embedg_obstruction (t_ver_sparse_rep *, t_adjl_sparse_rep *, t_dlcl **, t_dlcl **, t_ver_edge *, int, int *, int, int, t_ver_sparse_rep **, t_adjl_sparse_rep **, int *);
+minor embedg_mark_obstruction (t_dlcl **, t_dlcl **, t_ver_edge *, int, int *, int, int);
 /* aproto: endfile */
 /* aproto: file embed_graph/post_dfs_preproc.c */
-extern t_dlcl *sparseg_order_wrt_lowpoint (int, int *, int *, t_dlcl *);
-extern int *sparseg_find_least_ancestor (int, t_dlcl **);
-extern int *sparseg_find_dfs_parent (int, t_dlcl **);
+t_dlcl *sparseg_order_wrt_lowpoint (int, int *, int *, t_dlcl *);
+int *sparseg_find_least_ancestor (int, t_dlcl **);
+int *sparseg_find_dfs_parent (int, t_dlcl **);
 /* aproto: endfile */
 /* aproto: file embed_graph/proper_face_walk.c */
-extern boolean embedg_VES_get_succ_on_proper_face_with_avoidance (t_ver_edge *, int, int, int, int, boolean, int, int *, int *, int *);
-extern void embedg_VES_get_succ_on_proper_face (t_ver_edge *, int, int, int, int, int, int *, int *, int *);
-extern void embedg_VES_walk_proper_face (t_ver_edge *, int, int, int, boolean, int);
+boolean embedg_VES_get_succ_on_proper_face_with_avoidance (t_ver_edge *, int, int, int, int, boolean, int, int *, int *, int *);
+void embedg_VES_get_succ_on_proper_face (t_ver_edge *, int, int, int, int, int, int *, int *, int *);
+void embedg_VES_walk_proper_face (t_ver_edge *, int, int, int, boolean, int);
 /* aproto: endfile */
 /* aproto: file embed_graph/vertex_activity.c */
-extern boolean embedg_VES_is_ver_pertinent (t_ver_edge *, int, int, int);
-extern boolean embedg_VES_is_ver_ext_active (t_ver_edge *, int, int, int);
-extern boolean embedg_VES_is_ver_int_active (t_ver_edge *, int, int, int);
-extern boolean embedg_VES_is_ver_inactive (t_ver_edge *, int, int, int);
+boolean embedg_VES_is_ver_pertinent (t_ver_edge *, int, int, int);
+boolean embedg_VES_is_ver_ext_active (t_ver_edge *, int, int, int);
+boolean embedg_VES_is_ver_int_active (t_ver_edge *, int, int, int);
+boolean embedg_VES_is_ver_inactive (t_ver_edge *, int, int, int);
 /* aproto: endfile */
 /* aproto: file embed_graph/walkdown.c */
-extern t_merge_queue embedg_walkdown (t_ver_edge *, int, int *, int);
+t_merge_queue embedg_walkdown (t_ver_edge *, int, int *, int);
 /* aproto: endfile */
 /* aproto: file embed_graph/sparseg_dlcl_misc.c */
-extern void sparseg_dlcl_delete (t_dlcl **, int);
-extern void sparseg_dlcl_print (t_dlcl **, int);
-extern boolean sparseg_dlcl_is_adjacent (t_dlcl **, int, int, int, t_dlcl **);
-extern void sparseg_dlcl_append_to_neigh_list (t_dlcl **, int, int, int, int);
-extern void sparseg_dlcl_to_sparseg (t_dlcl **, int, int, t_ver_sparse_rep **, t_adjl_sparse_rep **);
-extern boolean sparseg_dlcl_sub (t_dlcl **, int, t_dlcl **, int);
+void sparseg_dlcl_delete (t_dlcl **, int);
+void sparseg_dlcl_print (t_dlcl **, int);
+boolean sparseg_dlcl_is_adjacent (t_dlcl **, int, int, int, t_dlcl **);
+void sparseg_dlcl_append_to_neigh_list (t_dlcl **, int, int, int, int);
+void sparseg_dlcl_to_sparseg (t_dlcl **, int, int, t_ver_sparse_rep **, t_adjl_sparse_rep **);
+boolean sparseg_dlcl_sub (t_dlcl **, int, t_dlcl **, int);
 /* aproto: endfile */
 /* aproto: file embed_graph/walkup.c */
-extern void embedg_walkup (t_ver_edge *, int, int, t_dlcl *);
+void embedg_walkup (t_ver_edge *, int, int, t_dlcl *);
 /* aproto: endfile */
 /* aproto: file embed_graph/dfs_preprocessing.c */
-extern void sparseg_adjl_dfs_preprocessing (t_ver_sparse_rep *, int, t_adjl_sparse_rep *, int *, int **, int **, int **, t_dlcl ***, t_dlcl ***, int **, int **, t_dlcl ***);
+void sparseg_adjl_dfs_preprocessing (t_ver_sparse_rep *, int, t_adjl_sparse_rep *, int *, int **, int **, int **, t_dlcl ***, t_dlcl ***, int **, int **, t_dlcl ***);
 /* aproto: endfile */
 /* aproto: file embed_graph/planar_by_edge_addition.c */
-extern boolean sparseg_adjl_is_planar (t_ver_sparse_rep *, int, t_adjl_sparse_rep *, int *, t_dlcl ***, t_dlcl ***, t_dlcl ***, t_ver_edge **, int *, int *, int *);
+boolean sparseg_adjl_is_planar (t_ver_sparse_rep *, int, t_adjl_sparse_rep *, int *, t_dlcl ***, t_dlcl ***, t_dlcl ***, t_ver_edge **, int *, int *, int *);
 /* aproto: endfile */
 /* aproto: file embed_graph/recover.c */
-extern void embedg_recover_embedding (t_ver_sparse_rep *, t_adjl_sparse_rep *, t_ver_edge *, int, int, t_dlcl **, t_ver_sparse_rep **, t_embed_sparse_rep **);
-extern void embedg_recov_embed_walk_proper_face (int, int, t_adjl_sparse_rep *, t_embed_sparse_rep *, boolean, int);
-extern boolean embedg_check_recov_embedding (int, int, int, t_ver_sparse_rep *, t_adjl_sparse_rep *, t_embed_sparse_rep *);
-extern t_dlcl **embedg_recover_obstruction (t_ver_edge *, int, minor, int *);
-extern boolean embedg_check_recov_obs (t_dlcl **, int, minor);
+void embedg_recover_embedding (t_ver_sparse_rep *, t_adjl_sparse_rep *, t_ver_edge *, int, int, t_dlcl **, t_ver_sparse_rep **, t_embed_sparse_rep **);
+void embedg_recov_embed_walk_proper_face (int, int, t_adjl_sparse_rep *, t_embed_sparse_rep *, boolean, int);
+boolean embedg_check_recov_embedding (int, int, int, t_ver_sparse_rep *, t_adjl_sparse_rep *, t_embed_sparse_rep *);
+t_dlcl **embedg_recover_obstruction (t_ver_edge *, int, minor, int *);
+boolean embedg_check_recov_obs (t_dlcl **, int, minor);
 /* aproto: endfile */
 /* aproto: file embed_graph/planar_alg_init.c */
-extern t_ver_edge *embedg_planar_alg_init (t_ver_sparse_rep *, int, t_adjl_sparse_rep *, int *, int *, t_dlcl ***, t_dlcl ***, t_dlcl ***);
+t_ver_edge *embedg_planar_alg_init (t_ver_sparse_rep *, int, t_adjl_sparse_rep *, int *, int *, t_dlcl ***, t_dlcl ***, t_dlcl ***);
 /* aproto: endfile */
 /* aproto: file embed_graph/dlcl_misc.c */
-extern t_dlcl *embedg_dlcl_rec_new (int);
-extern void embedg_dlcl_rec_print (t_dlcl *);
-extern void embedg_dlcl_print (t_dlcl *);
-extern t_dlcl *embedg_dlcl_rec_append (t_dlcl *, t_dlcl *);
-extern t_dlcl *embedg_dlcl_rec_prepend (t_dlcl *, t_dlcl *);
-extern t_dlcl *embedg_dlcl_cat (t_dlcl *, t_dlcl *);
-extern t_dlcl *embedg_dlcl_find (t_dlcl *, int);
-extern t_dlcl *embedg_dlcl_find_with_NIL_twin_in_adjl (t_dlcl *, int);
-extern t_dlcl *embedg_dlcl_delete_first (t_dlcl *);
-extern t_dlcl *embedg_dlcl_delete_rec (t_dlcl *, t_dlcl *);
-extern boolean embedg_dlcl_is_empty (t_dlcl *);
-extern t_dlcl *embedg_dlcl_list_next (t_dlcl *);
-extern t_dlcl *embedg_dlcl_list_prev (t_dlcl *);
-extern t_dlcl *embedg_dlcl_list_last (t_dlcl *);
-extern void embedg_dlcl_delete (t_dlcl *);
-extern t_dlcl *embedg_dlcl_copy (t_dlcl *);
-extern int embedg_dlcl_length (t_dlcl *);
+t_dlcl *embedg_dlcl_rec_new (int);
+void embedg_dlcl_rec_print (t_dlcl *);
+void embedg_dlcl_print (t_dlcl *);
+t_dlcl *embedg_dlcl_rec_append (t_dlcl *, t_dlcl *);
+t_dlcl *embedg_dlcl_rec_prepend (t_dlcl *, t_dlcl *);
+t_dlcl *embedg_dlcl_cat (t_dlcl *, t_dlcl *);
+t_dlcl *embedg_dlcl_find (t_dlcl *, int);
+t_dlcl *embedg_dlcl_find_with_NIL_twin_in_adjl (t_dlcl *, int);
+t_dlcl *embedg_dlcl_delete_first (t_dlcl *);
+t_dlcl *embedg_dlcl_delete_rec (t_dlcl *, t_dlcl *);
+boolean embedg_dlcl_is_empty (t_dlcl *);
+t_dlcl *embedg_dlcl_list_next (t_dlcl *);
+t_dlcl *embedg_dlcl_list_prev (t_dlcl *);
+t_dlcl *embedg_dlcl_list_last (t_dlcl *);
+void embedg_dlcl_delete (t_dlcl *);
+t_dlcl *embedg_dlcl_copy (t_dlcl *);
+int embedg_dlcl_length (t_dlcl *);
 /* aproto: endfile */
 /* aproto: file embed_graph/sparseg_adjl.c */
-extern boolean sparseg_adjl_plan_and_iso (t_ver_sparse_rep *, int, t_adjl_sparse_rep *, int, int *, t_ver_sparse_rep **, t_adjl_sparse_rep **, t_embed_sparse_rep **, int *);
-extern int *sparseg_adjl_footprint (t_ver_sparse_rep *, int, t_adjl_sparse_rep *, int);
-extern void sparseg_adjl_print (t_ver_sparse_rep *, int, t_adjl_sparse_rep *, boolean);
-extern void sparseg_adjl_embed_print (t_ver_sparse_rep *, int, t_adjl_sparse_rep *, t_embed_sparse_rep *, boolean);
-extern graph *sparseg_adjl_to_nauty_graph (t_ver_sparse_rep *, int, t_adjl_sparse_rep *);
-extern t_edge_sparse_rep *sparseg_adjl_edges (t_ver_sparse_rep *, int, t_adjl_sparse_rep *, int, boolean);
+boolean sparseg_adjl_plan_and_iso (t_ver_sparse_rep *, int, t_adjl_sparse_rep *, int, int *, t_ver_sparse_rep **, t_adjl_sparse_rep **, t_embed_sparse_rep **, int *);
+int *sparseg_adjl_footprint (t_ver_sparse_rep *, int, t_adjl_sparse_rep *, int);
+void sparseg_adjl_print (t_ver_sparse_rep *, int, t_adjl_sparse_rep *, boolean);
+void sparseg_adjl_embed_print (t_ver_sparse_rep *, int, t_adjl_sparse_rep *, t_embed_sparse_rep *, boolean);
+graph *sparseg_adjl_to_nauty_graph (t_ver_sparse_rep *, int, t_adjl_sparse_rep *);
+t_edge_sparse_rep *sparseg_adjl_edges (t_ver_sparse_rep *, int, t_adjl_sparse_rep *, int, boolean);
 /* aproto: endfile */
 /* aproto: file embed_graph/embedding.c */
-extern void embedg_embedding (t_ver_sparse_rep *, t_adjl_sparse_rep *, t_ver_edge *, int, int, int, int, t_dlcl **, t_ver_sparse_rep **, t_embed_sparse_rep **);
-extern void embedg_remove_SCE (t_ver_edge *, int, int);
-extern int *embedg_vertices_orientation (t_ver_edge *, int);
-extern int embedg_merge_remaining_virtual (t_ver_edge *, int);
-extern int embedg_nbr_faces (t_ver_edge *, int, int, int *, int *);
-extern boolean embedg_is_embed_valid (t_ver_edge *, int, int, int, int *, int *);
+void embedg_embedding (t_ver_sparse_rep *, t_adjl_sparse_rep *, t_ver_edge *, int, int, int, int, t_dlcl **, t_ver_sparse_rep **, t_embed_sparse_rep **);
+void embedg_remove_SCE (t_ver_edge *, int, int);
+int *embedg_vertices_orientation (t_ver_edge *, int);
+int embedg_merge_remaining_virtual (t_ver_edge *, int);
+int embedg_nbr_faces (t_ver_edge *, int, int, int *, int *);
+boolean embedg_is_embed_valid (t_ver_edge *, int, int, int, int *, int *);
 /* aproto: endfile */
 /* aproto: file embed_graph/sparseg_adjl_modify.c */
-extern boolean sparseg_adjl_add_edge (t_ver_sparse_rep *, int, t_adjl_sparse_rep **, int *, int *, int, int, boolean);
-extern boolean sparseg_adjl_add_edge_no_extend (t_ver_sparse_rep *, int, t_adjl_sparse_rep *, int, int *, int, int, boolean);
-extern boolean sparseg_adjl_add_dir_edge (t_ver_sparse_rep *, int, t_adjl_sparse_rep **, int *, int *, int, int, boolean);
-extern boolean sparseg_adjl_add_dir_edge_no_extend (t_ver_sparse_rep *, int, t_adjl_sparse_rep *, int, int *, int, int, boolean);
-extern boolean sparseg_adjl_remove_edge_no_red (t_ver_sparse_rep *, t_adjl_sparse_rep *, int, int);
-extern boolean sparseg_adjl_remove_dir_edge_no_red (t_ver_sparse_rep *, t_adjl_sparse_rep *, int, int);
-extern int sparseg_adjl_remove_all_dir_edge_no_red (t_ver_sparse_rep *, t_adjl_sparse_rep *, int, int);
-extern void sparseg_adjl_add_vertices (t_ver_sparse_rep **, int, int);
-extern void sparseg_adjl_add_vertices_no_extend (t_ver_sparse_rep *, int, int);
-extern void sparseg_adjl_remove_vertex (t_ver_sparse_rep **, int, t_adjl_sparse_rep *, int, int, int *);
-extern void sparseg_adjl_remove_vertex_no_red (t_ver_sparse_rep *, int, t_adjl_sparse_rep *, int, int *);
-extern void sparseg_adjl_relabel_vertex (t_adjl_sparse_rep *, int, int);
+boolean sparseg_adjl_add_edge (t_ver_sparse_rep *, int, t_adjl_sparse_rep **, int *, int *, int, int, boolean);
+boolean sparseg_adjl_add_edge_no_extend (t_ver_sparse_rep *, int, t_adjl_sparse_rep *, int, int *, int, int, boolean);
+boolean sparseg_adjl_add_dir_edge (t_ver_sparse_rep *, int, t_adjl_sparse_rep **, int *, int *, int, int, boolean);
+boolean sparseg_adjl_add_dir_edge_no_extend (t_ver_sparse_rep *, int, t_adjl_sparse_rep *, int, int *, int, int, boolean);
+boolean sparseg_adjl_remove_edge_no_red (t_ver_sparse_rep *, t_adjl_sparse_rep *, int, int);
+boolean sparseg_adjl_remove_dir_edge_no_red (t_ver_sparse_rep *, t_adjl_sparse_rep *, int, int);
+int sparseg_adjl_remove_all_dir_edge_no_red (t_ver_sparse_rep *, t_adjl_sparse_rep *, int, int);
+void sparseg_adjl_add_vertices (t_ver_sparse_rep **, int, int);
+void sparseg_adjl_add_vertices_no_extend (t_ver_sparse_rep *, int, int);
+void sparseg_adjl_remove_vertex (t_ver_sparse_rep **, int, t_adjl_sparse_rep *, int, int, int *);
+void sparseg_adjl_remove_vertex_no_red (t_ver_sparse_rep *, int, t_adjl_sparse_rep *, int, int *);
+void sparseg_adjl_relabel_vertex (t_adjl_sparse_rep *, int, int);
 /* aproto: endfile */
 /* aproto: file embed_graph/sparseg_adjl_misc.c */
-extern void sparseg_adjl_assign_V (t_ver_sparse_rep *, t_ver_sparse_rep *, int);
-extern t_ver_sparse_rep *sparseg_adjl_dup_V (t_ver_sparse_rep *, int);
-extern void sparseg_adjl_assign_A (t_adjl_sparse_rep *, t_adjl_sparse_rep *, int);
-extern t_adjl_sparse_rep *sparseg_adjl_dup_A (t_adjl_sparse_rep *, int);
-extern void sparseg_embed_assign_E (t_embed_sparse_rep *, t_embed_sparse_rep *, int);
-extern t_embed_sparse_rep *sparseg_embed_dup_E (t_embed_sparse_rep *, int);
-extern void sparseg_adjl_underlying_undir (t_ver_sparse_rep *, int, t_adjl_sparse_rep *, int, t_ver_sparse_rep **, t_adjl_sparse_rep **, int *, int *);
-extern void sparseg_adjl_edge_union (t_ver_sparse_rep *, int, t_adjl_sparse_rep *, int, t_ver_sparse_rep *, t_adjl_sparse_rep *, boolean, t_ver_sparse_rep **, t_adjl_sparse_rep **, int *, int *);
-extern void sparseg_adjl_add_edges (t_ver_sparse_rep *, int, t_adjl_sparse_rep *, int, int *, t_ver_sparse_rep *, t_adjl_sparse_rep *, boolean, int *);
+void sparseg_adjl_assign_V (t_ver_sparse_rep *, t_ver_sparse_rep *, int);
+t_ver_sparse_rep *sparseg_adjl_dup_V (t_ver_sparse_rep *, int);
+void sparseg_adjl_assign_A (t_adjl_sparse_rep *, t_adjl_sparse_rep *, int);
+t_adjl_sparse_rep *sparseg_adjl_dup_A (t_adjl_sparse_rep *, int);
+void sparseg_embed_assign_E (t_embed_sparse_rep *, t_embed_sparse_rep *, int);
+t_embed_sparse_rep *sparseg_embed_dup_E (t_embed_sparse_rep *, int);
+void sparseg_adjl_underlying_undir (t_ver_sparse_rep *, int, t_adjl_sparse_rep *, int, t_ver_sparse_rep **, t_adjl_sparse_rep **, int *, int *);
+void sparseg_adjl_edge_union (t_ver_sparse_rep *, int, t_adjl_sparse_rep *, int, t_ver_sparse_rep *, t_adjl_sparse_rep *, boolean, t_ver_sparse_rep **, t_adjl_sparse_rep **, int *, int *);
+void sparseg_adjl_add_edges (t_ver_sparse_rep *, int, t_adjl_sparse_rep *, int, int *, t_ver_sparse_rep *, t_adjl_sparse_rep *, boolean, int *);
 /* aproto: endfile */
 /* aproto: file embed_graph/degree.c */
-extern int *sparseg_adjl_degree_seq (t_ver_sparse_rep *, int, t_adjl_sparse_rep *);
+int *sparseg_adjl_degree_seq (t_ver_sparse_rep *, int, t_adjl_sparse_rep *);
 /* aproto: endfile */
 /* aproto: file embed_graph/neighbours.c */
-extern void sparseg_adjl_vertex_out_neighbours (t_ver_sparse_rep *, int, t_adjl_sparse_rep *, int, int **, int *);
-extern void sparseg_adjl_vertex_in_neighbours (t_ver_sparse_rep *, int, t_adjl_sparse_rep *, int, int **, int *);
+void sparseg_adjl_vertex_out_neighbours (t_ver_sparse_rep *, int, t_adjl_sparse_rep *, int, int **, int *);
+void sparseg_adjl_vertex_in_neighbours (t_ver_sparse_rep *, int, t_adjl_sparse_rep *, int, int **, int *);
 /* aproto: endfile */
 /* aproto: file embed_graph/misc.c */
-extern void sparseg_comp_delete (t_comp_sparse_rep *, int);
-extern void sparseg_comp_print (t_comp_sparse_rep *, int);
+void sparseg_comp_delete (t_comp_sparse_rep *, int);
+void sparseg_comp_print (t_comp_sparse_rep *, int);
 /* aproto: endfile */
 /* aproto: file embed_graph/dfs_things.c */
-extern void sparseg_adjl_dfs_things (t_ver_sparse_rep *, int, t_adjl_sparse_rep *, int, boolean, int *, t_ver_sparse_rep **, t_adjl_sparse_rep **, int *, int **, int **, int **, int **, int **, int *, int **, int *, t_comp_sparse_rep **);
-extern void sparseg_adjl_dfs_add_vertex_to_comp (t_comp_sparse_rep **, int *, int);
-extern void sparseg_adjl_dfs_create_new_comp (t_comp_sparse_rep **, int *);
-extern void sparseg_adjl_from_comps_to_sparseg_adjl (t_ver_sparse_rep *, int, t_adjl_sparse_rep *, t_comp_sparse_rep *, int, t_graph_sparse_rep **);
-extern void sparseg_adjl_from_start_comp_to_sparseg_adjl (t_ver_sparse_rep *, int, t_adjl_sparse_rep *, int *, t_graph_sparse_rep **);
+void sparseg_adjl_dfs_things (t_ver_sparse_rep *, int, t_adjl_sparse_rep *, int, boolean, int *, t_ver_sparse_rep **, t_adjl_sparse_rep **, int *, int **, int **, int **, int **, int **, int *, int **, int *, t_comp_sparse_rep **);
+void sparseg_adjl_dfs_add_vertex_to_comp (t_comp_sparse_rep **, int *, int);
+void sparseg_adjl_dfs_create_new_comp (t_comp_sparse_rep **, int *);
+void sparseg_adjl_from_comps_to_sparseg_adjl (t_ver_sparse_rep *, int, t_adjl_sparse_rep *, t_comp_sparse_rep *, int, t_graph_sparse_rep **);
+void sparseg_adjl_from_start_comp_to_sparseg_adjl (t_ver_sparse_rep *, int, t_adjl_sparse_rep *, int *, t_graph_sparse_rep **);
 /* aproto: endfile */
 /* aproto: file embed_graph/dfs_for_digraph.c */
-extern void sparseg_adjl_dfs_digraph (t_ver_sparse_rep *, int, t_adjl_sparse_rep *, int, int, t_ver_sparse_rep **, t_adjl_sparse_rep **, int *, int **, int **, int **, int **, int **, int *, t_comp_sparse_rep **);
+void sparseg_adjl_dfs_digraph (t_ver_sparse_rep *, int, t_adjl_sparse_rep *, int, int, t_ver_sparse_rep **, t_adjl_sparse_rep **, int *, int **, int **, int **, int **, int **, int *, t_comp_sparse_rep **);
 /* aproto: endfile */
 /* aproto: file embed_graph/bfs.c */
-extern void sparseg_adjl_bfs (t_ver_sparse_rep *, int, t_adjl_sparse_rep *, boolean, int, t_ver_sparse_rep **, t_adjl_sparse_rep **, int *);
+void sparseg_adjl_bfs (t_ver_sparse_rep *, int, t_adjl_sparse_rep *, boolean, int, t_ver_sparse_rep **, t_adjl_sparse_rep **, int *);
 /* aproto: endfile */
 /* aproto: file embed_graph/faces.c */
-extern void sparseg_adjl_walk_proper_face (int, t_adjl_sparse_rep *, t_embed_sparse_rep *, int, boolean, int, int *, t_edge_sparse_rep *);
-extern void sparseg_adjl_get_face_edges (int, t_adjl_sparse_rep *, int, t_embed_sparse_rep *, int, t_edge_sparse_rep **, int *, boolean, int);
+void sparseg_adjl_walk_proper_face (int, t_adjl_sparse_rep *, t_embed_sparse_rep *, int, boolean, int, int *, t_edge_sparse_rep *);
+void sparseg_adjl_get_face_edges (int, t_adjl_sparse_rep *, int, t_embed_sparse_rep *, int, t_edge_sparse_rep **, int *, boolean, int);
 /* aproto: endfile */
 
 #ifdef __cplusplus

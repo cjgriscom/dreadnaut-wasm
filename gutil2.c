@@ -112,11 +112,54 @@ cyclecount1(graph *g, int n)
 /**************************************************************************/
 
 long
+cyclecount1lim(graph *g, long lim, int n)
+/* The total number of cycles in g (assuming no loops), m=1 only.
+   If lim > 0 and the count is greater than lim, return lim+1. */
+{
+    setword body,nbhd;
+    long total;
+    int i,j;
+
+    body = ALLMASK(n);
+    total = 0;
+
+    for (i = 0; i < n-2; ++i)
+    {
+        body ^= bit[i];
+        nbhd = g[i] & body;
+        while (nbhd)
+        {
+            TAKEBIT(j,nbhd);
+            total += pathcount1(g,j,body,nbhd);
+            if (total > lim && lim > 0) return lim+1;
+        }
+    }
+
+    return total;
+}
+
+/**************************************************************************/
+
+long
 cyclecount(graph *g, int m, int n)
 /* The total number of cycles in g (assuming no loops) */
 {
     if (n == 0) return 0;
     if (m == 1) return cyclecount1(g,n);
+
+    gt_abort(">E cycle counting is only implemented for n <= WORDSIZE\n");
+    return 0;
+}
+
+/**************************************************************************/
+
+long
+cyclecountlim(graph *g, long lim, int m, int n)
+/* The total number of cycles in g (assuming no loops).
+   If lim > 0 and the count is >lim, return lim+1. */
+{
+    if (n == 0) return 0;
+    if (m == 1) return cyclecount1lim(g,lim,n);
 
     gt_abort(">E cycle counting is only implemented for n <= WORDSIZE\n");
     return 0;
@@ -491,6 +534,7 @@ conncontent(graph *g, int m, int n)
     mindeg = n;
     ne = 0;
     goodv = -1;
+    minv = 0;
     for (j = 0; j < n; ++j)
     {
         gj = g[j];
@@ -819,6 +863,97 @@ numpentagons(graph *g, int m, int n)
     return (long)(count/5);
 }
 
+long
+numhexagons1(graph *g, int n) 
+/* Number of hexagons; version for m=1 only */
+{
+    unsigned long ans;
+    int a,b,c;
+    long ab,ac,bc,abc;
+    setword bits,gab,gac,gbc;
+
+    ans = 0;
+    for (c = 2; c < n; ++c)
+    {
+        for (b = 1; b < c; ++b)
+        if ((g[b] & g[c]))
+            for (a = 0; a < b; ++a)
+                if ((g[a] & g[b]) && (g[a] & g[c]))
+                {
+                    bits = bit[a] | bit[b] | bit[c];
+                    gab = g[a] & g[b] & ~bits;
+                    gac = g[a] & g[c] & ~bits;
+                    gbc = g[b] & g[c] & ~bits;
+                    ab = POPCOUNT(gab);
+                    ac = POPCOUNT(gac);
+                    bc = POPCOUNT(gbc);
+                    abc = POPCOUNT(gab&gac&gbc);
+                    ans += ab*ac*bc - abc*(ab+ac+bc-2);
+                }
+    }
+
+    return (long)(ans/2);
+}
+
+long
+numhexagons(graph *g, int m, int n) 
+/* Number of hexagons, undirected only, loops ok. */
+{
+    unsigned long ans;
+    long nab,nac,nbc,nabc;
+    int i,a,b,c;
+    set *ga,*gb,*gc;
+    DYNALLSTAT(set,gab,gab_sz);
+    DYNALLSTAT(set,gac,gac_sz);
+    DYNALLSTAT(set,gbc,gbc_sz);
+
+    if (m == 1) return numhexagons1(g,n);
+
+    DYNALLOC1(set,gab,gab_sz,n,"numhexagons");
+    DYNALLOC1(set,gac,gac_sz,n,"numhexagons");
+    DYNALLOC1(set,gbc,gbc_sz,n,"numhexagons");
+
+    ans = 0;
+    for (c = 2; c < n; ++c)
+    {
+        gc = g + m*c;
+        for (b = 1; b < c; ++b)
+        {
+            gb = g + m*b;
+            for (i = 0; i < m; ++i) if ((gb[i]&gc[i])) break;
+            if (i == m) continue;
+            for (a = 0; a < b; ++a)
+            {
+                ga = g + m*a;
+                for (i = 0; i < m; ++i) gab[i] = ga[i] & gb[i];
+                for (i = 0; i < m; ++i) gac[i] = ga[i] & gc[i];
+                for (i = 0; i < m; ++i) gbc[i] = gb[i] & gc[i];
+                DELELEMENT(gab,a); DELELEMENT(gac,a); DELELEMENT(gbc,a);
+                DELELEMENT(gab,b); DELELEMENT(gac,b); DELELEMENT(gbc,b);
+                DELELEMENT(gab,c); DELELEMENT(gac,c); DELELEMENT(gbc,c);
+                nab = nac = nbc = nabc = 0;
+                for (i = 0; i < m; ++i)
+                {
+                    nab += POPCOUNT(gab[i]);
+                    nac += POPCOUNT(gac[i]);
+                    nbc += POPCOUNT(gbc[i]);
+                    nabc += POPCOUNT(gab[i] & gac[i] & gbc[i]);
+                }
+                ans += nab*nac*nbc - nabc*(nab+nac+nbc-2);
+            }
+        }
+    }
+
+    if (n > 256)
+    {
+        DYNFREE(gab,gab_sz);
+        DYNFREE(gac,gac_sz);
+        DYNFREE(gbc,gbc_sz);
+    }
+
+    return (long)(ans/2);
+}
+
 /**************************************************************************/
 
 int
@@ -826,7 +961,7 @@ ktreeness1(graph *g, int n)
 /* Version of ktreeness() for m=1. */
 {
     int i,v,k,deg[WORDSIZE];
-    setword left,degk,w;
+    setword left,degk=0,w;
 
     k = n+1;
     for (i = 0; i < n; ++i)
@@ -886,6 +1021,7 @@ ktreeness(graph *g, int m, int n)
     DYNALLOC1(set,w,w_sz,m,"ktreeness");
 
     k = n+1;
+    ndegk = 0;
     for (i = 0, gi = g; i < n; ++i, gi += m)
     {
         SETSIZE(deg[i],gi,m);

@@ -64,10 +64,10 @@ typedef struct TracesStats {
 #ifdef __cplusplus
 extern "C" {
 #endif
-extern void Traces(sparsegraph*,int*,int*,int*,TracesOptions*,
+void Traces(sparsegraph*,int*,int*,int*,TracesOptions*,
 				   TracesStats*,sparsegraph*);									
-extern void refine_tr(sparsegraph*,int*,int*,int*,int*,TracesOptions*);		
-extern void traces_freedyn(void);
+void refine_tr(sparsegraph*,int*,int*,int*,int*,TracesOptions*);		
+void traces_freedyn(void);
 #ifdef __cplusplus
 }
 #endif
