@@ -1,10 +1,10 @@
 /* cubhamg.c : pick those inputs that are nonhamiltonian and
                 have max degree <= 3.
-   Version 2.0 of August 2021. */
+   Version 2.1 of December 2025. */
 
 #define USAGE \
  "cubhamg [-#] [-v|-V]" \
- " [-n#-#|-y#-#|-i|-I|-o|-O|-x|-e|-E] [-b|-t] [infile [outfile]]"
+ " [-n#-#|-y#-#|-i|-I|-o|-O|-x|-e|-E|-c] [-b|-t] [infile [outfile]]"
 
 #define HELPTEXT \
 " cubhamg : Find hamiltonian cycles in sub-cubic graphs\n" \
@@ -21,8 +21,9 @@
 "\n" \
 "    -#  A parameter useful for tuning (default 100)\n" \
 "    -v  Report nonhamiltonian graphs and noncubic graphs\n" \
-"    -V  .. in addition give a cycle for the hamiltonian ones\n" \
 "           (with -c, give count for each input)\n" \
+"    -V  .. in addition give a cycle for the hamiltonian ones\n" \
+"           (with -c list all the cycles in addition to the count)\n" \
 "    -n#-#  If the two numbers are v and i, then the i-th edge\n" \
 "        out of vertex v is required to be not in the cycle.\n" \
 "        It must be that i=1..3 and v=0..n-1.\n" \
@@ -62,7 +63,46 @@
 "\n" \
 "    -y, -n, -#, -R and -T are ignored for -i, -I, -x, -o, -e, -E, -F\n"
 
-/* BD. McKay, Nov 1995, Aug 1996, Feb 2002, Jul 2008, Nov 2015, Jul 2017 */
+/* The following only work with -c.
+ *
+ * PROCESS function
+ *
+ * If the preprocessor variable PROCESS is defined, a function with
+ * the prototype
+ *   int PROCESS(int g[][4], unsigned long long cycindex, int cyc[], int n)
+ * is called for each hamiltonian cycle. If the function returns a non-zero
+ * value, cycle finding for this graph is discontinued; otherwise it 
+ * continues. The value of cycindex is the index of the hamiltonian cycle.
+ * The first cycle found for each graph has index 1.
+ *
+ * The graph is in g[0..n-1][0..3] with vertex i adjacent to g[i][0],
+ * g[i][1],... up to and excluding the first negative value. Note that the
+ * degree is at most 3, so there is always a negative value present.
+ *
+ * If GRAPHSTART is defined, a function with prototype
+ *   void GRAPHSTART(unsigned long long nin, int g[][4], int n)
+ * is called for each graph before the search for cycles begins.
+ * nin is the index of the input graph -- the first has index 1
+ *
+ * If GRAPHEND is defined, a function with prototype
+ *   void GRAPHEND(int g[][4], int n, unsigned long long numcycles, int code)
+ * is called after cycle finding finishes for each graph. The value of code
+ * is the last value returned by PROCESS, if it was ever called for this
+ * graph, or 0 if PROCESS was never called.
+ *
+ * Use -D on the compile command to define these variables to have values
+ * equal to the real names of each function. All of them are optional.
+ */
+
+#ifdef PROCESS
+int PROCESS(int g[][4], unsigned long long cycindex, int cyc[], int n);
+#endif
+#ifdef GRAPHSTART
+void GRAPHSTART(unsigned long long nin, int g[][4], int n);
+#endif
+#ifdef GRAPHEND
+void GRAPHEND(int g[][4], int n, unsigned long long numcycles, int code);
+#endif
 
 /**************************************************************************/
 
@@ -102,7 +142,9 @@ static long nodecount,maxnodes,totalnodes;
 static long timeout;
 static long repeats;
 static int verbose;
-static nauty_counter numhamcycs;
+static unsigned long long numhamcycs;
+static FILE *msgfile;
+static int processcode;
 
 #define NO_LIMIT 0x7FFFFFFFL
 
@@ -110,7 +152,8 @@ static long standard[]
   = {30,40,50,60,100,200,300,400,500,1000,2000,3000,5000,
      10000,20000,30000,100000,300000,1000000};
 #define NUMMAXNODES (sizeof(standard)/sizeof(long))
-static nauty_counter numtries[NUMMAXNODES+1];
+static unsigned long long numtries[NUMMAXNODES+1];
+static unsigned long long numread;
 
 /* cubham.c */
 
@@ -432,8 +475,45 @@ propagate_count(cubgraph g, cubgraph eno, nodedata *ndptr, int *nin, int nv)
             status = NO;
     }
 
-    if (status != NO && *nin == nv) { ++numhamcycs; return NO; }
-    else                            return status;
+    if (status != NO && *nin == nv)
+    {
+        int result,w,v,i,j,cyc[MAXN];
+
+#ifndef PROCESS
+        if (verbose >= 2)
+        {
+#endif
+
+            w = -1;
+            v = 0;
+            cyc[0] = 0;
+            for (i = 1; i < nv; ++i)
+            {
+                for (j = 0; g[v][j] == w || class[eno[v][j]] != YES; ++j)
+                    {}
+                w = v;
+                v = g[v][j];
+                cyc[i] = v;
+            }
+
+            result = NO;
+#ifndef PROCESS
+        }
+#else
+        processcode = PROCESS(g,numhamcycs+1,cyc,nv);
+        if (processcode) result = YES;
+#endif
+
+        if (verbose >= 2)
+        {
+            for (i = 0; i < nv; ++i) printf(" %d",cyc[i]);
+            printf("\n");
+        }
+        ++numhamcycs;
+        return result;
+    }
+    else     
+        return status;
 }
 
 static int
@@ -810,7 +890,7 @@ cubham(cubgraph g, cubgraph eno, edgevec initclass, edgevec v1, edgevec v2,
     return status;
 }
 
-static nauty_counter
+static unsigned long long
 cubham_count(cubgraph g, cubgraph eno, edgevec initclass, edgevec v1, edgevec v2,
        vertvec cycle, edgevec outclass, int nv, int ne) 
 /* external interface, counting version; returns number of cycles */
@@ -890,9 +970,11 @@ cubham_count(cubgraph g, cubgraph eno, edgevec initclass, edgevec v1, edgevec v2
     if (status == DUNNO)
         status = hamnode_count(g,eno,v1,v2,&hcnodat,0,nin,nv);
 
+#ifndef PROCESS
     if (status != NO)
         gt_abort(">E hamnode_count() should return NO\n");
-    
+#endif
+ 
     return numhamcycs;
 }
 
@@ -1006,7 +1088,7 @@ isham(cubgraph cub,
 
 /********************************************************************/
 
-static nauty_counter
+static unsigned long long
 numham(cubgraph cub,
       int n, int ne, int weight,
       int *vv, int *vi, int nvv,
@@ -1018,10 +1100,16 @@ numham(cubgraph cub,
 {
     int i;
     edgevec v1,v2,initclass,outclass;
+    unsigned long long count;
 
     maxnodes = NO_LIMIT;
     nodecount = 0;
     cubinit(cub,eno,v1,v2,n,ne);
+
+    processcode = 0;
+#ifdef GRAPHSTART
+    GRAPHSTART(numread,cub,n);
+#endif
 
     for (i = 0; i < ne; ++i)
         initclass[i] = DUNNO;
@@ -1033,7 +1121,11 @@ numham(cubgraph cub,
 
     totalnodes += nodecount;
 
-    return cubham_count(cub,eno,initclass,v1,v2,cyc,outclass,n,ne);
+    count = cubham_count(cub,eno,initclass,v1,v2,cyc,outclass,n,ne);
+#ifdef GRAPHEND
+    GRAPHEND(cub,n,count,processcode);
+#endif
+    return count;
 }
 
 /**************************************************************************/
@@ -1053,7 +1145,7 @@ optadd(cubgraph cub, int v1, int v2)
 /**************************************************************************/
 
 static void
-dofragment(nauty_counter id, cubgraph cub, int n, int ne, int weight)
+dofragment(unsigned long long id, cubgraph cub, int n, int ne, int weight)
 /* Test for coverage by one or two paths between vertices of degree 2 */
 {
     int i,i1,i2,i3,i4;
@@ -1072,7 +1164,7 @@ dofragment(nauty_counter id, cubgraph cub, int n, int ne, int weight)
         if (cub[i][2] < 0) deg2[ndeg2++] = i;
     }
 
-    printf("Input " COUNTER_FMT ":",id);
+    printf("Input %llu:",id);
     for (i = 0; i < ndeg2; ++i) printf(" %d",deg2[i]);
     printf("\n");
 
@@ -1952,10 +2044,10 @@ int
 main(int argc, char *argv[])
 {
     char *infilename,*outfilename;
-    FILE *infile,*outfile,*msgfile;
+    FILE *infile,*outfile;
     boolean badargs,biconn,triconn,fragment,countcycs;
     boolean in,out,inin,outout,inout,e34,e34plus,testing;
-    nauty_counter numread,noncub,nonham,nonconn,numto;
+    unsigned long long noncub,nonham,nonconn,numto;
     int ch,weight,n,ne,i,namesgot,nl;
     int nbad,limit,x0[BADLIM],x1[BADLIM],y0[BADLIM],y1[BADLIM];
     sparsegraph sg;
@@ -1964,7 +2056,7 @@ main(int argc, char *argv[])
     double t0,t1;
     cubgraph cub;
     char *arg;
-    nauty_counter count,mincount,maxcount,totalcount;
+    unsigned long long count,mincount,maxcount,totalcount;
     int codetype;
 
     HELP; PUTVERSION;
@@ -2155,7 +2247,7 @@ main(int argc, char *argv[])
         if (n >= MAXN-1)
         {
             fprintf(stderr,
-                ">E cubhamg: input " COUNTER_FMT " too big\n",numread);
+                ">E cubhamg: input %llu too big\n",numread);
             exit(1);
         }
 #if MAXM==1
@@ -2170,8 +2262,7 @@ main(int argc, char *argv[])
         if (!sgtocub(&sg,cub,&ne))
         {
             if (verbose)
-                fprintf(msgfile,"Input " COUNTER_FMT
-                                " has maxdeg>3.\n",numread);
+                fprintf(msgfile,"Input %llu has maxdeg>3.\n",numread);
             ++noncub;
         }
         else if (biconn && !biconnected_cub(cub,n))
@@ -2182,8 +2273,7 @@ main(int argc, char *argv[])
         {
             count = numham(cub,n,ne,weight,vv,vi,nvv,yy,yi,nyy,cyc);
             if (verbose >= 2)
-                fprintf(msgfile,"Input " COUNTER_FMT " has " COUNTER_FMT
-                    " cycles.\n",numread,count);
+                fprintf(msgfile,"Input %llu has %llu cycles.\n",numread,count);
             totalcount += count;
             mincount = maxcount = 0;
             if (numread == 1) mincount = maxcount = count;
@@ -2196,8 +2286,7 @@ main(int argc, char *argv[])
             {
                 if (verbose)
                 {
-                    fprintf(msgfile,"Input " COUNTER_FMT
-                                    " fails property e34%s:",
+                    fprintf(msgfile,"Input %llu fails property e34%s:",
                                            numread,e34plus ? "+" : "");
                     if (e34plus)
                         for (i = 0; i < nbad; ++i)
@@ -2218,8 +2307,7 @@ main(int argc, char *argv[])
             {
                 if (verbose)
                 { 
-                    fprintf(msgfile,"Input " COUNTER_FMT
-                                    " fails property -+:",numread);
+                    fprintf(msgfile,"Input %llu fails property -+:",numread);
                     for (i = 0; i < nbad; ++i) 
                         fprintf(msgfile," %d-%d/%d-%d",
                                 x0[i],x1[i],y0[i],y1[i]); 
@@ -2235,8 +2323,7 @@ main(int argc, char *argv[])
             {
                 if (verbose)
                 {  
-                    fprintf(msgfile,"Input " COUNTER_FMT
-                                    " fails property ++:",numread); 
+                    fprintf(msgfile,"Input %llu fails property ++:",numread); 
                     for (i = 0; i < nbad; ++i) 
                         fprintf(msgfile," %d-%d/%d-%d",
                                 x0[i],x1[i],y0[i],y1[i]);
@@ -2252,8 +2339,7 @@ main(int argc, char *argv[])
             {
                 if (verbose)
                 {  
-                    fprintf(msgfile,"Input " COUNTER_FMT
-                                    " fails property --:",numread); 
+                    fprintf(msgfile,"Input %llu fails property --:",numread); 
                     for (i = 0; i < nbad; ++i) 
                         fprintf(msgfile," %d-%d/%d-%d",
                                 x0[i],x1[i],y0[i],y1[i]);
@@ -2270,15 +2356,12 @@ main(int argc, char *argv[])
                 if (verbose) 
                 {
                     if (nbad == -2)
-                        fprintf(msgfile,"Input " COUNTER_FMT
-                                    " timed out\n",numread);
+                        fprintf(msgfile,"Input %llu timed out\n",numread);
                     else if (nbad == -1)
-                        fprintf(msgfile,"Input " COUNTER_FMT
-                                    " is nonhamiltonian\n",numread);
+                        fprintf(msgfile,"Input %llu is nonhamiltonian\n",numread);
                     else
                     {
-                        fprintf(msgfile,"Input " COUNTER_FMT
-                                        " fails property -:",numread);
+                        fprintf(msgfile,"Input %llu fails property -:",numread);
                         for (i = 0; i < nbad; ++i)
                             fprintf(msgfile," %d-%d",x0[i],x1[i]);
                         fprintf(msgfile,"\n");
@@ -2297,8 +2380,7 @@ main(int argc, char *argv[])
             {
                 if (verbose)
                 {    
-                    fprintf(msgfile,"Input " COUNTER_FMT
-                                    " fails property +:",numread); 
+                    fprintf(msgfile,"Input %llu fails property +:",numread); 
                     for (i = 0; i < nbad; ++i) 
                         fprintf(msgfile," %d-%d",x0[i],x1[i]); 
                     fprintf(msgfile,"\n"); 
@@ -2314,21 +2396,20 @@ main(int argc, char *argv[])
         else if ((ch = isham(cub,n,ne,weight,vv,vi,nvv,yy,yi,nyy,cyc)) == NO)
         {
             if (verbose)
-                fprintf(msgfile,"Input " COUNTER_FMT
-                                " is not hamiltonian.\n",numread);
+                fprintf(msgfile,"Input %llu is not hamiltonian.\n",numread);
             ++nonham;
             writelast(outfile);
         }
         else if (ch == HABORT)
         {
             if (verbose)
-                fprintf(msgfile,"Input " COUNTER_FMT " timed out.\n",numread);
+                fprintf(msgfile,"Input %llu timed out.\n",numread);
             ++numto;
              writelast(outfile);
         }
         else if (verbose >= 2)
         {
-            fprintf(msgfile,"Cycle in input " COUNTER_FMT ":\n",numread);
+            fprintf(msgfile,"Cycle in input %llu:\n",numread);
             if (n <= 100) nl = 26;
             else          nl = 19;
             for (i = 0; i < n; ++i)
@@ -2341,22 +2422,21 @@ main(int argc, char *argv[])
     }
     t1 = CPUTIME;
 
-    fprintf(msgfile,">C " COUNTER_FMT
-                    " graphs read from %s\n",numread,infilename);
+    fprintf(msgfile,">C %llu graphs read from %s\n",numread,infilename);
     if (noncub > 0)
-        fprintf(msgfile,">C " COUNTER_FMT " graphs with maxdeg > 3\n",noncub);
+        fprintf(msgfile,">C %llu graphs with maxdeg > 3\n",noncub);
     if (nonconn > 0)
-        fprintf(msgfile,">C " COUNTER_FMT " graphs not %sconnected\n",
+        fprintf(msgfile,">C %llu graphs not %sconnected\n",
                         nonconn,biconn ? "bi" : "tri");
     if (numto > 0)
-        fprintf(msgfile,">C " COUNTER_FMT " graphs timed out\n",numto);
+        fprintf(msgfile,">C %llu graphs timed out\n",numto);
     if (countcycs && numread > 0)
-        fprintf(msgfile,">C mincycles=" COUNTER_FMT "; maxcycles="
-                    COUNTER_FMT "; total cycles=" COUNTER_FMT "; %3.2f sec\n",
+        fprintf(msgfile,">C mincycles=%llu; maxcycles=%llu; " 
+                        " total cycles=%llu; %3.2f sec\n",
                     mincount,maxcount,totalcount,t1-t0);
     else
         fprintf(msgfile,
-        ">Z " COUNTER_FMT " %s graphs written to %s; %3.2f sec\n",
+        ">Z %llu %s graphs written to %s; %3.2f sec\n",
           nonham+numto, e34 ? (e34plus ? "non-e34+" : "non-e34") :
                 inout ? "non-inout" : 
                     out ? "non-out" :
@@ -2369,7 +2449,7 @@ main(int argc, char *argv[])
     {
         fprintf(msgfile,"Tries:"); 
         for (i = 0; i <= NUMMAXNODES && numtries[i] > 0; ++i)
-            fprintf(msgfile," " COUNTER_FMT,numtries[i]);
+            fprintf(msgfile," %llu",numtries[i]);
         fprintf(msgfile,"\n");
     }
 #if MAXES

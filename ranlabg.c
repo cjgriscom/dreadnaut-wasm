@@ -1,4 +1,4 @@
-/* ranlabg.c  version 1.2; B D McKay, Jun 20, 2015. */
+/* ranlabg.c  version 1.3; B D McKay, Oct 17, 2025. */
 
 #define USAGE "ranlabg [-q] [-f#] [-m#] [-S#] [infile [outfile]]"
 
@@ -59,7 +59,7 @@ main(int argc, char *argv[])
     int j,m,n,argnum,fixed;
     int codetype,outcode;
     graph *g;
-    nauty_counter nin;
+    unsigned long long nin,nout;
     int mult;
     boolean digraph;
     char *arg,sw;
@@ -156,7 +156,7 @@ main(int argc, char *argv[])
 
     nautil_check(WORDSIZE,1,1,NAUTYVERSIONID);
 
-    nin = 0;
+    nin = nout = 0;
     t = CPUTIME;
     while (TRUE)
     {
@@ -176,15 +176,23 @@ main(int argc, char *argv[])
             else
                 writed6(outfile,h,m,n);
         }
+	nout += mult;
         FREES(g);
     }
     t = CPUTIME - t;
 
     if (!quiet)
-        fprintf(stderr,
-            ">Z  " COUNTER_FMT
-                 " graphs relabeled from %s to %s; %3.2f sec.\n",
+    {
+	if (nin == nout)
+	    fprintf(stderr,
+                ">Z %llu graphs relabeled from %s to %s; %3.2f sec.\n",
                 nin,infilename,outfilename,t);
+	else
+	    fprintf(stderr,
+                ">Z %llu graphs relabeled from %s;"
+                " %llu written to %s; %3.2f sec.\n",
+                nin,infilename,nout,outfilename,t);
+    }
 
     exit(0);
 }

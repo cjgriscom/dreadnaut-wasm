@@ -1,4 +1,4 @@
-/* genrang.c  version 3.0; B D McKay, Mar 2025 */
+/* genrang.c  version 3.1; B D McKay, Nov 2025 */
 /* TODO:  Check allocs for no edges */
 
 #define USAGE \
@@ -36,6 +36,11 @@
     -T  : Make a random tournament (implies -z)\n\
     -a  : Make invariant under a random permutation\n\
     -S# : Specify random generator seed (default nondeterministic)\n\
+\n\
+    -G# : Accept with probability min(1,|Aut(G)|/#). Output will then\n\
+          approximate unlabelled graphs, with accuracy increasing and\n\
+          efficiency decreasing as # increases.\n\
+\n\
     -q  : suppress auxiliary output\n"
 
 #define MAXLREG 88   /* Max value for -r or -R switch (multigraphs) */
@@ -45,6 +50,7 @@
 /*************************************************************************/
 
 #include "gtools.h"
+#include "nautinv.h"
 
 static void
 perminvar(graph *g, int *perm, int m, int n)
@@ -1112,6 +1118,104 @@ randombiptree(sparsegraph *sg, int n1, int n2)
 }
 
 /**************************************************************************/
+
+static long
+getgroup(graph *g, int m, int n, boolean digraph, boolean doinv)
+/* Return group size, 0 if 10^10 or more. */
+{
+    DYNALLSTAT(int,lab,lab_sz);
+    DYNALLSTAT(int,ptn,ptn_sz);
+    DYNALLSTAT(int,orbits,orbits_sz);
+    DYNALLSTAT(int,wt,wt_sz);
+    DYNALLSTAT(set,w,w_sz);
+    static DEFAULTOPTIONS_GRAPH(goptions);
+    static DEFAULTOPTIONS_DIGRAPH(doptions);
+    statsblk stats;
+    int i,j,k;
+
+    DYNALLOC1(int,lab,lab_sz,n,"getgroup");
+    DYNALLOC1(int,ptn,ptn_sz,n,"getgroup");
+    DYNALLOC1(int,orbits,orbits_sz,n,"getgroup");
+
+    if (doinv)  /* Simple invariant */
+    {
+        DYNALLOC1(set,w,w_sz,m,"getgroup");
+        DYNALLOC1(int,wt,wt_sz,n,"getgroup");
+        for (i = 0; i < n; ++i)
+        {
+            for (j = 0; j < m; ++j) w[j] = 0;
+            for (j = -1; (j = nextelement(g+i*m,m,j)) >= 0;)
+                for (k = 0; k < m; ++k) w[k] |= g[j*m+k];
+            SETSIZE(wt[i],w,m);
+        }
+        setlabptn(wt,lab,ptn,n);
+        goptions.defaultptn = doptions.defaultptn = FALSE;
+    }
+    else
+    {
+        goptions.defaultptn = doptions.defaultptn = TRUE;
+    }
+    densenauty(g,lab,ptn,orbits,(digraph?&doptions:&goptions),&stats,m,n,NULL);
+
+    if (stats.grpsize2 > 0) return 0;
+    else                    return (long)(stats.grpsize1+0.1);
+}
+
+
+static long
+getgroup_sg(sparsegraph *sg, boolean digraph, boolean doinv)
+/* Return group size, 0 if 10^10 or more. */
+{
+    DYNALLSTAT(int,lab,lab_sz);
+    DYNALLSTAT(int,ptn,ptn_sz);
+    DYNALLSTAT(int,orbits,orbits_sz);
+    DYNALLSTAT(int,wt,wt_sz);
+    DYNALLSTAT(set,w,w_sz);
+    static DEFAULTOPTIONS_SPARSEGRAPH(goptions);
+    static DEFAULTOPTIONS_SPARSEDIGRAPH(doptions);
+    statsblk stats;
+    int m,n,i,j,k,l;
+    int *d,*e;
+    size_t *v;
+
+    n = sg->nv;
+    m = SETWORDSNEEDED(n);
+
+    DYNALLOC1(int,lab,lab_sz,n,"getgroup_sg");
+    DYNALLOC1(int,ptn,ptn_sz,n,"getgroup_sg");
+    DYNALLOC1(int,orbits,orbits_sz,n,"getgroup_sg");
+
+    if (doinv)
+    {
+        DYNALLOC1(int,wt,wt_sz,n,"getgroup_sg");
+        DYNALLOC1(set,w,w_sz,m,"getgroup_sg");
+        SG_VDE(sg,v,d,e);
+
+        for (i = 0; i < n; ++i)
+        {
+            for (j = 0; j < m; ++j) w[j] = 0;
+            for (j = v[i]; j < v[i]+d[i]; ++j)
+            {
+                k = e[j];
+                for (l = v[k]; l < v[k]+d[k]; ++l)
+                    ADDELEMENT(w,e[l]);
+            }
+            SETSIZE(wt[i],w,m);
+        }
+        setlabptn(wt,lab,ptn,n);
+        goptions.defaultptn = doptions.defaultptn = FALSE;
+    }
+    else
+    {
+        goptions.defaultptn = doptions.defaultptn = TRUE;
+    }
+    sparsenauty(sg,lab,ptn,orbits,(digraph?&doptions:&goptions),&stats,NULL);
+
+    if (stats.grpsize2 > 0) return 0;
+    else                    return (long)(stats.grpsize1+0.1);
+}
+
+/**************************************************************************/
 /**************************************************************************/
 
 #define NOBIP if (bipartite) { fprintf(stderr, \
@@ -1127,10 +1231,10 @@ main(int argc, char *argv[])
     boolean badargs;
     boolean gswitch,sswitch,qswitch,Sswitch,Rswitch,lswitch,tswitch;
     boolean aswitch,Pswitch,eswitch,rswitch,mswitch,dswitch;
-    boolean Tswitch,Mswitch;
-    long numgraphs,nout,P1value,P2value,rvalue;
+    boolean Tswitch,Mswitch,Gswitch;
+    long numgraphs,nout,P1value,P2value,rvalue,Gvalue;
     unsigned long long ln,nc2;
-    int loopmax,multmax;
+    int loopmax,multmax,aut;
     unsigned long long Svalue,evalue;
     long markoviters;
     static FILE *outfile;
@@ -1151,7 +1255,7 @@ main(int argc, char *argv[])
     gswitch = sswitch = qswitch = Sswitch = Rswitch = FALSE;
     aswitch = Pswitch = eswitch = rswitch = FALSE;
     digraph = dswitch = tswitch = lswitch = mswitch = FALSE;
-    Tswitch = Mswitch = FALSE;
+    Tswitch = Mswitch = Gswitch = FALSE;
     outfilename = NULL;
     markoviters = 0;
 
@@ -1179,6 +1283,7 @@ main(int argc, char *argv[])
                 else SWLONG('M',Mswitch,markoviters,"genrang -M")
                 else SWLONG('r',rswitch,rvalue,"genrang -r")
                 else SWLONG('R',Rswitch,rvalue,"genrang -R")
+                else SWLONG('G',Gswitch,Gvalue,"genrang -G")
                 else SWULL('S',Sswitch,Svalue,"genrang -S")
                 else SWINT('l',lswitch,loopmax,"genrang -l")
                 else SWINT('m',mswitch,multmax,"genrang -m")
@@ -1244,7 +1349,13 @@ main(int argc, char *argv[])
         gt_abort(">E genrang: -sgR are incompatible\n");
 
     if ((aswitch!=0) + (Rswitch!=0) > 1)
-        gt_abort(">E genrang: -aR are incompatible\n");
+        gt_abort(">E genrang: -a and -R are incompatible\n");
+
+    if (Gswitch && Gvalue <= 1) Gswitch = FALSE; 
+    
+    if ((Gswitch!=0) + (Rswitch!=0) > 1)
+        gt_abort(">E genrang: -G and R are incompatible\n");
+
 
     if (!lswitch) loopmax = 0;
     if (!mswitch) multmax = 1;
@@ -1411,6 +1522,20 @@ main(int argc, char *argv[])
             ranperm(perm,n);
             perminvar(g,perm,m,n);
         }
+
+        if (Gswitch)
+        {
+            if (usesparse)
+                aut = getgroup_sg(&sg,codetype==DIGRAPH6,rswitch||dswitch);
+            else 
+                aut = getgroup(g,m,n,codetype==DIGRAPH6,rswitch||dswitch);
+            if (aut > 0 && aut < Gvalue && KRAN(Gvalue) >= aut)
+            {
+                --nout;
+                continue;
+            }
+        }
+
         if (codetype == SPARSE6)
         {
             if (usesparse)

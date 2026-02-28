@@ -1,4 +1,4 @@
-/* vcolg.c version 3.1; B D McKay, Apr 24, 2021 */
+/* vcolg.c version 3.2; B D McKay, Oct 9, 2025 */
 
 #define USAGE \
 "vcolg [-q] [-u|-T|-o|-O] [-e#|-e#:#] [-m#] [-c#,..,#] [-f#] [infile [outfile]]"
@@ -17,6 +17,7 @@
     -D#,..,#  maximum vertex degree for each colour (out-degree for digraphs)\n\
          -d and -D can have fewer colours than -m/-c but not more\n\
     -f# Use the group that fixes the first # vertices setwise\n\
+    -F# As -f# but the first # vertices are given colour 0\n\
     -T  Use a simple text output format (nv ne {col} {v1 v2})\n\
     -o  Use sparse6 (undirected) or digraph6 (directed) for output,\n\
           provided m=2 and the inputs have no loops.\n\
@@ -31,7 +32,8 @@
 #include "nautinv.h"
 #include "gutils.h"
 
-nauty_counter vc_nin,vc_nout;
+unsigned long long vc_nin,vc_nout;
+int vc_nfixed;
 FILE *outfile;
 
 #define MAXNV 128   /* Maximum number of vertices */
@@ -54,10 +56,11 @@ static long long totallab;
 /* If OUTPROC is defined at compile time, and -u is not used, the
  * procedure OUTPROC is called for each graph.  This must be linked
  * by the compiler.  The arguments are
- * f = open output file
- * g = the input graph
- * col[0..n-1] = the colours
- * m,n = usual nauty meanings
+ *   f = open output file
+ *   g = the input graph
+ *   col[0..n-1] = the colours
+ *   m,n = usual nauty meanings
+ * The value of -f or -F or 0 is in the global variable vc_nfixed.
  */
 
 /* SUMMARY feature
@@ -66,7 +69,7 @@ static long long totallab;
  * with prototype  void SUMMARY(void).  It is called at the end before
  * the normal summary (which can be suppressed with -q).  The numbers of
  * graphs read and coloured graphs produced are available in the global
- * variables vc_nin and vc_nout (type nauty_counter).
+ * variables vc_nin and vc_nout (type unsigned long long).
  */
 
 #ifdef OUTPROC
@@ -209,9 +212,7 @@ trythisone(grouprec *group, graph *g, boolean digraph, int m, int n)
 #ifdef OUTPROC
             OUTPROC(outfile,g,col,m,n);
 #else
-            ne = 0;
-            for (gi = g + m*(size_t)n; --gi >= g; )
-                ne += POPCOUNT(*gi);
+            SETSIZE(ne,g,(size_t)m*(size_t)n);
             if (!digraph)
             {
                 for (i = 0, gi = g; i < n; ++i, gi += m)
@@ -288,9 +289,9 @@ scan(int level, graph *g, boolean digraph, int *prev, long mincols,
 /**************************************************************************/
 
 static void
-colourgraph(graph *g, int nfixed, long mincols, long maxcols,
-         long *colcount, long *mindeg, long *maxdeg, long *deg,
-         int numcols, int m, int n)
+colourgraph(graph *g, int nfixed, boolean skipfixed, long mincols,
+        long maxcols, long *colcount, long *mindeg, long *maxdeg,
+        long *deg, int numcols, int m, int n)
 {
     static DEFAULTOPTIONS_GRAPH(options);
     statsblk stats;
@@ -408,16 +409,16 @@ colourgraph(graph *g, int nfixed, long mincols, long maxcols,
     lastrejok = FALSE;
     for (i = 0; i < n; ++i) col[i] = 0;
 
-    scan(0,g,FALSE,prev,mincols,maxcols,0,colcount,
+    scan((skipfixed?nfixed:0),g,FALSE,prev,mincols,maxcols,0,colcount,
                            mindeg,maxdeg,deg,numcols,group,m,n);
 }
 
 /**************************************************************************/
 
 static void
-colourdigraph(graph *g, int nfixed, long mincols, long maxcols,
-         long *colcount, long *mindeg, long *maxdeg, long *deg,
-         int numcols, int m, int n)
+colourdigraph(graph *g, int nfixed, boolean skipfixed, long mincols,
+         long maxcols, long *colcount, long *mindeg, long *maxdeg,
+         long *deg, int numcols, int m, int n)
 {
     static DEFAULTOPTIONS_GRAPH(options);
     statsblk stats;
@@ -553,7 +554,7 @@ colourdigraph(graph *g, int nfixed, long mincols, long maxcols,
     lastrejok = FALSE;
     for (i = 0; i < n; ++i) col[i] = 0;
 
-    scan(0,g,TRUE,prev,mincols,maxcols,0,colcount,
+    scan((skipfixed?nfixed:0),g,TRUE,prev,mincols,maxcols,0,colcount,
                                 mindeg,maxdeg,deg,numcols,group,m,n);
 }
 
@@ -567,7 +568,7 @@ main(int argc, char *argv[])
     int argnum,i,j,nfixed;
     char *arg,sw;
     boolean badargs,digraph,cswitch,dswitch,Dswitch;
-    boolean fswitch,uswitch,eswitch,qswitch,mswitch;
+    boolean fswitch,Fswitch,uswitch,eswitch,qswitch,mswitch;
     long mincols,maxcols,totcols;
     int numcols;
     double t;
@@ -582,7 +583,7 @@ main(int argc, char *argv[])
     nauty_check(WORDSIZE,1,1,NAUTYVERSIONID);
 
     fswitch = Tswitch = oswitch = Oswitch = cswitch = dswitch = FALSE;
-    uswitch = eswitch = mswitch = qswitch = Dswitch = FALSE;
+    uswitch = eswitch = mswitch = qswitch = Dswitch = Fswitch = FALSE;
     infilename = outfilename = NULL;
 
     argnum = 0;
@@ -606,6 +607,7 @@ main(int argc, char *argv[])
                 else SWSEQUENCEMIN('d',",",dswitch,mindeg,1,MAXNV,dlen,"vcolg -d")
                 else SWSEQUENCEMIN('D',",",Dswitch,maxdeg,1,MAXNV,Dlen,"vcolg -D")
                 else SWINT('f',fswitch,nfixed,"vcolg -f")
+                else SWINT('F',Fswitch,nfixed,"vcolg -F")
                 else SWRANGE('e',":-",eswitch,mincols,maxcols,"vcolg -e")
                 else badargs = TRUE;
             }
@@ -640,13 +642,15 @@ main(int argc, char *argv[])
 
     if (oswitch && numcols != 2)
         gt_abort(">E vcolg: -o and -O are only allowed for 2 colours\n");
+    if (fswitch && Fswitch)
+        gt_abort(">E vcolg: -f and -F are incompatible\n");
 
     if (!eswitch)
     {
         mincols = 0;
         maxcols = NOLIMIT;
     }
-    if (!fswitch) nfixed = 0;
+    if (!fswitch && !Fswitch) nfixed = 0;
 
     if (cswitch && mswitch && numcols != collen)
         gt_abort(">E vcolg: -m and -c disagree on number of colours\n");
@@ -709,14 +713,15 @@ main(int argc, char *argv[])
     {
         msg[0] = '\0';
         CATMSG0(">A vcolg");
-        if (eswitch || mswitch || uswitch || (fswitch && nfixed > 0)
-              || Tswitch || oswitch)
+        if (eswitch || mswitch || uswitch || (fswitch && nfixed > 0) 
+              || (Fswitch && nfixed > 0) || Tswitch || oswitch)
             CATMSG0(" -");
         if (mswitch) CATMSG1("m%d",numcols);
         if (uswitch) CATMSG0("u");
         if (Tswitch) CATMSG0("T");
         if (oswitch) CATMSG0("o");
         if (fswitch) CATMSG1("f%d",nfixed);
+        if (fswitch) CATMSG1("F%d",nfixed);
         if (eswitch) CATMSG2("e%ld:%ld",mincols,maxcols);
         msglen = strlen(msg);
         if (argnum > 0) msglen += strlen(infilename);
@@ -757,6 +762,7 @@ main(int argc, char *argv[])
     }
 
     vc_nin = vc_nout = 0;
+    vc_nfixed = nfixed;
 
     t = CPUTIME;
     while (TRUE)
@@ -777,11 +783,11 @@ main(int argc, char *argv[])
         }
 
         if (!digraph)
-            colourgraph(g,nfixed,mincols,maxcols,colcount,
-                                   mindeg,maxdeg,deg,numcols,m,n);
+            colourgraph(g,nfixed,(Fswitch && nfixed>0),mincols,maxcols,
+                        colcount,mindeg,maxdeg,deg,numcols,m,n);
         else
-            colourdigraph(g,nfixed,mincols,maxcols,colcount,
-                                   mindeg,maxdeg,deg,numcols,m,n);
+            colourdigraph(g,nfixed,(Fswitch && nfixed>0),mincols,maxcols,
+                        colcount,mindeg,maxdeg,deg,numcols,m,n);
 
         if (!uswitch && ferror(outfile)) gt_abort(">E vcolg output error\n");
         FREES(g);
@@ -794,11 +800,9 @@ main(int argc, char *argv[])
 
     if (!qswitch)
     {
-        fprintf(stderr,">Z ");
-        PRINT_COUNTER(stderr,vc_nin);
+        fprintf(stderr,">Z %llu",vc_nin);
         fprintf(stderr," graphs read from %s",infilename);
-        fprintf(stderr,"; ");
-        PRINT_COUNTER(stderr,vc_nout);
+        fprintf(stderr,"; %llu",vc_nout);
         if (!uswitch)
             fprintf(stderr," coloured graphs written to %s",outfilename);
         else

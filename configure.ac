@@ -1,5 +1,5 @@
 # Process this file with autoconf to produce a configure script.
-AC_INIT([nauty],[2.9.0],[brendan.mckay@anu.edu.au])
+AC_INIT([nauty],[2.9.3],[brendan.mckay@anu.edu.au])
 AC_CONFIG_SRCDIR([nauty-h.in])
 
 # ======================================================================
@@ -222,7 +222,7 @@ AC_EXEEXT
 dnl Checks for header files.
 
 AC_HEADER_SYS_WAIT
-AC_CHECK_HEADERS(signal.h stddef.h unistd.h sys/types.h sys/wait.h stdlib.h string.h errno.h limits.h stdint.h)
+AC_CHECK_HEADERS(signal.h stddef.h unistd.h sys/types.h sys/wait.h stdlib.h string.h errno.h limits.h stdint.h endian.h)
 CVT_YESNO(ac_cv_header_stddef_h,header_stddef_h)
 CVT_YESNO(ac_cv_header_unistd_h,header_unistd_h)
 CVT_YESNO(ac_cv_header_stdlib_h,header_stdlib_h)
@@ -233,6 +233,7 @@ CVT_YESNO(ac_cv_header_errno_h,header_errno_h)
 CVT_YESNO(ac_cv_header_signal_h,header_signal_h)
 CVT_YESNO(ac_cv_header_limits_h,header_limits_h)
 CVT_YESNO(ac_cv_header_stdint_h,header_stdint_h)
+CVT_YESNO(ac_cv_header_endian_h,header_endian_h)
 
 AC_TYPE_PID_T
 CVT_YESNO(ac_cv_type_pid_t,have_pid_t)
@@ -569,6 +570,12 @@ AS_IF([test "$gunzip_prog" = "gunzip"],[have_gunzip=1],[have_gunzip=0])
 AC_SUBST(have_gunzip)
 
 LT_INIT
+AC_SUBST([enable_static])
+AS_IF([test "x$enable_static" = "xyes"],
+      [osuffix=".o" ; olist=""],
+      [osuffix=".lo" ; olist="L"])
+AC_SUBST([osuffix])
+AC_SUBST([olist])
 
 AC_CONFIG_FILES([makefile:makefile.in nauty.h:nauty-h.in
     naututil.h:naututil-h.in gtools.h:gtools-h.in

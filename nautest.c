@@ -2,12 +2,30 @@
 
 #include "nauty.h"
 
+static void
+setwordinhex(setword x, char *s)
+/* Make a hex string for x, including leading spaces. */
+{
+    static char hex[]
+        = {'0','1','2','3','4','5','6','7','8','9','a','b','c','d','e','f'};
+    int i;
+
+    i = WORDSIZE / 4;
+    s[i] = '\0';
+    while (--i >= 0)
+    {
+        s[i] = hex[x&0xF];
+        x >>= 4;
+    }
+}
+
 int
 main(int argc, char *argv[])
 {
     int i,j,n,bad,sz;
     setword w;
     set ss[4];
+    char hex[33];
 
     bad = 0;
 
@@ -305,9 +323,14 @@ printf("\n");
         SETSIZE(sz,ss,3);
         if (sz != n)
         {
-            printf("\n ***** SETSIZE error *****\n\n");
+            setwordinhex(ss[0],hex); printf("%s ",hex);
+            setwordinhex(ss[1],hex); printf("%s ",hex);
+            setwordinhex(ss[2],hex); printf("%s ",hex);
+            printf("\n ***** SETSIZE error - should be %d, gave %d *****\n",
+                    n,sz);
             ++bad;
         }
+        if (bad > 10) break;
     }
 
     if (!bad) printf("No errors found\n\n");

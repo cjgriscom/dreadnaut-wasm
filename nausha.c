@@ -1,6 +1,9 @@
-/* nausha.c version 1.0; B D McKay, January 2025 */
+/* nausha.c version 1.1; B D McKay, August 2025 */
 
 #include "nausha.h"
+#if HAVE_ENDIAN_H && !defined(__STDC_ENDIAN_NATIVE__)
+#include <endian.h>
+#endif
 
 /****************************************************************************
 * This implementation of SHA256 is by Brad Conte, released to public domain.
@@ -35,6 +38,35 @@ static const nsword32 k[64] = {
     0x19a4c116,0x1e376c08,0x2748774c,0x34b0bcb5,0x391c0cb3,0x4ed8aa4a,0x5b9cca4f,0x682e6ff3,
     0x748f82ee,0x78a5636f,0x84c87814,0x8cc70208,0x90befffa,0xa4506ceb,0xbef9a3f7,0xc67178f2
 };
+
+#if defined(__STDC_ENDIAN_NATIVE__) && defined(__STDC_ENDIAN_LITTLE__)
+#if __STDC_ENDIAN_NATIVE__ == __STDC_ENDIAN_LITTLE__
+#define ISBIGENDIAN 0
+#else
+#define ISBIGENDIAN 1
+#endif
+#elif defined(__BYTE_ORDER) && defined(__LITTLE_ENDIAN)
+#if __BYTE_ORDER == __LITTLE_ENDIAN
+#define ISBIGENDIAN 0
+#else
+#define ISBIGENDIAN 1
+#endif
+#elif defined(__DARWIN_BYTE_ORDER) && defined(__DARWIN_LITTLE_ENDIAN)
+#if __DARWIN_BYTE_ORDER == __DARWIN_LITTLE_ENDIAN
+#define ISBIGENDIAN 0
+#else
+#define ISBIGENDIAN 1
+#endif
+#else
+static int
+isbigendian(void)
+{
+    unsigned int x = 1;
+    unsigned char *c = (char*)&x;
+    return (*c == (char)1 ? 0 : 1);
+}
+#define ISBIGENDIAN isbigendian() 
+#endif
 
 static void
 sha256_transform(SHA256_CTX *ctx, const nsword8 data[])
@@ -171,18 +203,31 @@ sha256_final(SHA256_CTX *ctx, nsword8 hash[])
     ctx->data[56] = ctx->bitlen >> 56;
     sha256_transform(ctx, ctx->data);
 
-    // Since this implementation uses little endian byte ordering and SHA uses big endian,
-    // reverse all the bytes when copying the final state to the output hash.
-    for (i = 0; i < 4; ++i) {
-        hash[i]      = (ctx->state[0] >> (24 - i * 8)) & 0x000000ff;
-        hash[i + 4]  = (ctx->state[1] >> (24 - i * 8)) & 0x000000ff;
-        hash[i + 8]  = (ctx->state[2] >> (24 - i * 8)) & 0x000000ff;
-        hash[i + 12] = (ctx->state[3] >> (24 - i * 8)) & 0x000000ff;
-        hash[i + 16] = (ctx->state[4] >> (24 - i * 8)) & 0x000000ff;
-        hash[i + 20] = (ctx->state[5] >> (24 - i * 8)) & 0x000000ff;
-        hash[i + 24] = (ctx->state[6] >> (24 - i * 8)) & 0x000000ff;
-        hash[i + 28] = (ctx->state[7] >> (24 - i * 8)) & 0x000000ff;
-    }
+    // Since SHA uses big endian, we need the endianness of the current
+    // runtime to copy the result into the final hash.
+ 
+    if (ISBIGENDIAN)
+        for (i = 0; i < 4; ++i) {
+            hash[i]      = (ctx->state[1] >> (i * 8)) & 0x000000ff;
+            hash[i + 4]  = (ctx->state[0] >> (i * 8)) & 0x000000ff;
+            hash[i + 8]  = (ctx->state[3] >> (i * 8)) & 0x000000ff;
+            hash[i + 12] = (ctx->state[2] >> (i * 8)) & 0x000000ff;
+            hash[i + 16] = (ctx->state[5] >> (i * 8)) & 0x000000ff;
+            hash[i + 20] = (ctx->state[4] >> (i * 8)) & 0x000000ff;
+            hash[i + 24] = (ctx->state[7] >> (i * 8)) & 0x000000ff;
+            hash[i + 28] = (ctx->state[6] >> (i * 8)) & 0x000000ff;
+        }
+    else
+        for (i = 0; i < 4; ++i) {
+            hash[i]      = (ctx->state[0] >> (24 - i * 8)) & 0x000000ff;
+            hash[i + 4]  = (ctx->state[1] >> (24 - i * 8)) & 0x000000ff;
+            hash[i + 8]  = (ctx->state[2] >> (24 - i * 8)) & 0x000000ff;
+            hash[i + 12] = (ctx->state[3] >> (24 - i * 8)) & 0x000000ff;
+            hash[i + 16] = (ctx->state[4] >> (24 - i * 8)) & 0x000000ff;
+            hash[i + 20] = (ctx->state[5] >> (24 - i * 8)) & 0x000000ff;
+            hash[i + 24] = (ctx->state[6] >> (24 - i * 8)) & 0x000000ff;
+            hash[i + 28] = (ctx->state[7] >> (24 - i * 8)) & 0x000000ff;
+        }
 }
 
 void

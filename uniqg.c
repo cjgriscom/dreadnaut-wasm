@@ -1,4 +1,4 @@
-/* uniqg.c version 1.1; B D McKay, February 2025 */
+/* uniqg.c version 1.2; B D McKay, August 2025 */
 
 #define USAGE "uniqg [-q] [-xFILE] [-Xfile] [-hFILE] [-fxxx] [-u|-S|-t] \n\
                       [-c] [-k] [-i# -I#:# -K#] [infile [outfile]]"
@@ -13,7 +13,11 @@
     -t  Use Traces.\n\
 \n\
     -u  No output, just count\n\
-    -H  Write hash codes, not graphs (note: binary output)\n\
+    -H  Write hash codes (32 bytes), not graphs (note: binary output)\n\
+          Note that the output depends on the endianness of the hardware,\n\
+          so -H and -h can only be used together on compatible endianness.\n\
+    -J  Write hash codes without newlines, followed by newlines.\n\
+          This output cannot be read with -h.\n\
     -k  Write the input graph exactly, not a canonical graph\n\
     -c  Assume graphs from infile are canonically labelled already\n\
 \n\
@@ -316,6 +320,43 @@ makeystring(hashcode hash, char *ystring)
 
 /**************************************************************************/
 
+static void
+putlinecode(FILE *f, hashcode hash)
+/* Write a 32-byte code without newline, followed by a newline */
+{
+    unsigned char c,*s,buff[33];
+    int i;
+    nsword64 w;
+
+    s = buff;
+    for (i = 0; i < 4; ++i)
+    {
+        w = hash[i];
+        c = w & 0xFF; w >>= 8;
+        *(s++) = (c == '\n' ? 'X' : c);
+        c = w & 0xFF; w >>= 8;
+        *(s++) = (c == '\n' ? 'X' : c);
+        c = w & 0xFF; w >>= 8;
+        *(s++) = (c == '\n' ? 'X' : c);
+        c = w & 0xFF; w >>= 8;
+        *(s++) = (c == '\n' ? 'X' : c);
+        c = w & 0xFF; w >>= 8;
+        *(s++) = (c == '\n' ? 'X' : c);
+        c = w & 0xFF; w >>= 8;
+        *(s++) = (c == '\n' ? 'X' : c);
+        c = w & 0xFF; w >>= 8;
+        *(s++) = (c == '\n' ? 'X' : c);
+        c = w & 0xFF;
+        *(s++) = (c == '\n' ? 'X' : c);
+    }
+    *s = '\n';
+
+    if (fwrite(buff,1,33,f) != 33)
+        gt_abort(">E uniqg: fwrite failed in putlinecode()\n");
+}
+
+/**************************************************************************/
+
 int
 main(int argc, char *argv[])
 {
@@ -323,7 +364,7 @@ main(int argc, char *argv[])
     int argnum,j;
     char *arg,sw;
     boolean quiet,badargs,digraph,isnew,yswitch;
-    boolean fswitch,hswitch,Hswitch,kswitch;
+    boolean fswitch,hswitch,Hswitch,kswitch,Jswitch;
     boolean iswitch,Iswitch,Kswitch,Sswitch,cswitch;
     boolean uswitch,tswitch,xswitch,Xswitch,Fswitch;
     char *xarg,*Xarg,*harg;
@@ -348,7 +389,7 @@ main(int argc, char *argv[])
     nauty_check(WORDSIZE,1,1,NAUTYVERSIONID);
 
     quiet = badargs = Hswitch = kswitch = cswitch = FALSE;
-    fswitch = xswitch = Xswitch = hswitch = FALSE;
+    fswitch = xswitch = Xswitch = hswitch = Jswitch = FALSE;
     iswitch = Iswitch = Kswitch = Fswitch = FALSE;
     uswitch = Sswitch = tswitch = yswitch = FALSE;
     infilename = outfilename = NULL;
@@ -372,6 +413,7 @@ main(int argc, char *argv[])
                 else SWBOOLEAN('k',kswitch)
                 else SWBOOLEAN('c',cswitch)
                 else SWBOOLEAN('H',Hswitch)
+                else SWBOOLEAN('J',Jswitch)
                 else SWBOOLEAN('F',Fswitch)
                 else SWBOOLEAN('y',yswitch)
                 else SWINT('i',iswitch,inv,"uniqg -i")
@@ -416,6 +458,8 @@ main(int argc, char *argv[])
 
     if (tswitch && Sswitch)
         gt_abort(">E uniqg: -t and -S are incompatible\n");
+    if ((Hswitch != 0) + (Jswitch != 0) + (kswitch != 0) > 1)
+        gt_abort(">E uniqg: -k, -H and -J are incompatible\n");
 
     if (iswitch && inv == 0) iswitch = FALSE;
 
@@ -455,11 +499,12 @@ main(int argc, char *argv[])
     {
         fprintf(stderr,">A uniqg");
         if (fswitch || iswitch || tswitch || Sswitch || Hswitch
-                 || kswitch || cswitch || Fswitch)
+                 || Jswitch || kswitch || cswitch || Fswitch)
             fprintf(stderr," -");
         if (Sswitch) fprintf(stderr,"S");
         if (tswitch) fprintf(stderr,"t");
         if (Hswitch) fprintf(stderr,"H");
+        if (Jswitch) fprintf(stderr,"J");
         if (kswitch) fprintf(stderr,"k");
         if (cswitch) fprintf(stderr,"c");
         if (Fswitch) fprintf(stderr,"F");
@@ -590,6 +635,8 @@ main(int argc, char *argv[])
                 if (fwrite(hash,1,32,outfile) != 32)
                     gt_abort(">E error in writing hashcode\n");
             }
+            else if (Jswitch)
+                putlinecode(outfile,hash);
             else if (kswitch)
                 writelast(outfile);
             else if ((prog & USEDENSE))
@@ -630,7 +677,7 @@ main(int argc, char *argv[])
             fprintf(stderr,
                 ">Z %llu graphs read from %s, %llu unique; %.2f sec.\n",
                 nin,infilename,nout,t);
-        else if (Hswitch)
+        else if (Hswitch || Jswitch)
             fprintf(stderr,
                 ">Z %llu graphs read from %s, "
                 "%llu hashcodes written to %s; %.2f sec.\n",
