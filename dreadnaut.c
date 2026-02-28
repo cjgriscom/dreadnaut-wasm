@@ -108,6 +108,7 @@
 *       13-Nov-24 - add a signal catcher and error message for SIGSEGV       *
 *       19-Dec-24 - add (, t6 and b6 commands                                *
 *        5-Jan-25 - separate invariants options for graphs and digraphs      *
+*       24-Aug-25 - fix buffer overrun with f after n                        *
 *                                                                            *
 *****************************************************************************/
 
@@ -915,6 +916,7 @@ main(int argc, char *argv[])
                 loops = 0;
                 n = i;
                 m = SETWORDSNEEDED(n);
+                dyn_all(m,n);
                 freeschreier(NULL,&generators); 
             }
             break;
@@ -967,6 +969,7 @@ main(int argc, char *argv[])
                     loops = numloops_sg(&g_sg);
                     gvalid_sg = TRUE;
                     m = SETWORDSNEEDED(n);
+                    dyn_all(m,n);
                 }
                 else
                 {
@@ -985,6 +988,7 @@ main(int argc, char *argv[])
                                                 NULL,&options_digraph,&n))
                 {
                     m = SETWORDSNEEDED(n);
+                    dyn_all(m,n);
 #if MAXN
                     if (n > MAXN)
                     {
@@ -1366,6 +1370,7 @@ main(int argc, char *argv[])
                 loops = numloops(g,m,n);
                 m = newm;
                 n = newn;
+                dyn_all(m,n);
                 loops = 0;
                 cvalid = FALSE;
             }
@@ -1376,6 +1381,7 @@ main(int argc, char *argv[])
                 loops = numloops_sg(&g_sg);
                 m = newm;
                 n = newn;
+                dyn_all(m,n);
                 loops = 0;
                 cvalid_sg = FALSE;
             }

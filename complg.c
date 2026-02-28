@@ -1,6 +1,6 @@
-/* complg.c  version 2.0; B D McKay, Jun 2015. */
+/* complg.c  version 2.1; B D McKay, Sep 2025. */
 
-#define USAGE "complg [-lq] [-a] [-L] [-r|-R] [infile [outfile]]"
+#define USAGE "complg [-lq] [-a] [-L] [-r|-R|-S] [infile [outfile]]"
 
 #define HELPTEXT \
 " Take the complements of a file of graphs.\n\
@@ -12,6 +12,7 @@
     -R  Only complement if the complement has fewer directed edges\n\
         or has the same number of directed edges and is canonically\n\
         less than the original.\n\
+    -S  Select self-complementary graphs\n\
     -a  Also output the input graph (before the complement).\n\
     -L  Complement the loops too. By default, preserve them.\n\
     -l  Canonically label outputs.\n\
@@ -58,15 +59,16 @@ main(int argc, char *argv[])
 {
     char *infilename,*outfilename;
     FILE *infile,*outfile;
-    boolean also,dolabel,badargs,restricted,Restricted,quiet;
+    boolean also,dolabel,badargs,restricted,Restricted,selfcomp,quiet;
     boolean digraph,Lswitch;
-    int j,m,n,argnum;
+    int i,j,m,n,argnum;
     int codetype,outcode;
     graph *g;
     size_t ii,ned,nedc,nn,loops,loopsc=0,gwords;
-    nauty_counter nin;
+    unsigned long long nin,nout;
+    size_t deg,gcode,gccode;
     char *arg,sw;
-    static graph *gq;
+    graph *gq,*gi;
     double t;
 #if MAXN
     graph gc[MAXN*MAXM],h[MAXN*MAXM],hc[MAXN*MAXM];
@@ -80,7 +82,7 @@ main(int argc, char *argv[])
 
     infilename = outfilename = NULL;
     dolabel = badargs = also = FALSE;
-    restricted = Restricted = quiet = Lswitch = FALSE;
+    selfcomp = restricted = Restricted = quiet = Lswitch = FALSE;
 
     argnum = 0;
     badargs = FALSE;
@@ -95,6 +97,7 @@ main(int argc, char *argv[])
                 sw = *arg++;
                      SWBOOLEAN('r',restricted)
                 else SWBOOLEAN('R',Restricted)
+                else SWBOOLEAN('S',selfcomp)
                 else SWBOOLEAN('l',dolabel)
                 else SWBOOLEAN('L',Lswitch)
                 else SWBOOLEAN('a',also)
@@ -118,13 +121,17 @@ main(int argc, char *argv[])
         exit(1);
     }
 
+    if ((restricted != 0) + (Restricted != 0) + (selfcomp != 0) > 1)
+        gt_abort(">E complg: -r, -R and -S are incompatible\n");
+
     if (!quiet)
     {
         fprintf(stderr,">A complg");
-        if (restricted || Restricted || dolabel || Lswitch || also)
+        if (restricted || Restricted || selfcomp || dolabel || Lswitch || also)
             fprintf(stderr," -");
         if (restricted && !Restricted) fprintf(stderr,"r");
         if (Restricted) fprintf(stderr,"R");
+        if (selfcomp) fprintf(stderr,"S");
         if (dolabel) fprintf(stderr,"l");
         if (Lswitch) fprintf(stderr,"L");
         if (also) fprintf(stderr,"a");
@@ -160,7 +167,7 @@ main(int argc, char *argv[])
 
     nauty_check(WORDSIZE,1,1,NAUTYVERSIONID);
 
-    nin = 0;
+    nin = nout = 0;
     t = CPUTIME;
     while (TRUE)
     {
@@ -170,7 +177,9 @@ main(int argc, char *argv[])
         DYNALLOC2(graph,gc,gc_sz,n,m,"complg");
 #endif
 
-        if (restricted || Restricted)
+        gq = NULL;
+
+        if (selfcomp)
         {
             ned = loops = 0;
             gwords = m * (size_t)n;
@@ -180,12 +189,64 @@ main(int argc, char *argv[])
             if (Lswitch)
             {
                 loopsc = n - loops;
-                nedc = nn + n - (ned-loops)/2;
+                nedc = nn + n - ned;
             }
             else
             {
                 loopsc = loops;
-                nedc = nn - (ned-3*loops)/2;
+                nedc = nn - ned + 2*loops;
+            }
+
+            if (ned == nedc)
+            {
+                compl(g,m,n,gc,Lswitch);
+
+                gcode = 0;
+                for (i = 0, gi = g; i < n; ++i, gi += m)
+                {
+                    SETSIZE(deg,gi,m);
+                    gcode += (deg ^ 0x541);
+                }
+                gccode = 0;
+                for (i = 0, gi = gc; i < n; ++i, gi += m)
+                {
+                    SETSIZE(deg,gi,m);
+                    gccode += (deg ^ 0x541);
+                }
+                if (gcode == gccode)
+                {
+#if !MAXN
+                    DYNALLOC2(graph,h,h_sz,n,m,"complg");
+                    DYNALLOC2(graph,hc,hc_sz,n,m,"complg");
+#endif
+                    fcanonise(g,m,n,h,NULL,digraph||loops>0);
+                    fcanonise(gc,m,n,hc,NULL,digraph||loopsc>0);
+                    for (ii = 0; ii < gwords; ++ii)
+                        if (h[ii] != hc[ii]) break;
+                    if (ii == gwords)
+                    {
+                        ++nout;
+                        if (dolabel) gq = hc; else gq = gc;
+                    }
+                }
+            }
+        }
+        else if (restricted || Restricted)
+        {
+            ned = loops = 0;
+            gwords = m * (size_t)n;
+            nn = n * (size_t)(n-1);
+            for (ii = 0; ii < gwords; ++ii) ned += POPCOUNT(g[ii]);
+            for (ii = 0; ii < n; ++ii) if (ISELEMENT(g+m*ii,ii)) ++loops;
+            if (Lswitch)
+            {
+                loopsc = n - loops;
+                nedc = nn + n - ned;
+            }
+            else
+            {
+                loopsc = loops;
+                nedc = nn - ned + 2*loops;
             }
 
             if (ned > nedc || (ned == nedc && !Restricted))
@@ -258,17 +319,27 @@ main(int argc, char *argv[])
             else                          writeg6(outfile,g,m,n);
         }
 
-        if (outcode == SPARSE6)       writes6(outfile,gq,m,n);
-        else if (outcode == DIGRAPH6) writed6(outfile,gq,m,n);
-        else                          writeg6(outfile,gq,m,n);
+        if (gq != NULL)
+        {
+            if (outcode == SPARSE6)       writes6(outfile,gq,m,n);
+            else if (outcode == DIGRAPH6) writed6(outfile,gq,m,n);
+            else                          writeg6(outfile,gq,m,n);
+        }
         FREES(g);
     }
     t = CPUTIME - t;
 
     if (!quiet)
-        fprintf(stderr,">Z  " COUNTER_FMT 
-                " graphs converted from %s to %s in %3.2f sec.\n",
+    {
+        if (selfcomp)
+            fprintf(stderr,
+                ">Z %llu graphs read from %s, %llu written to %s; %.2f sec.\n",
+                nin,infilename,nout,outfilename,t);
+        else
+            fprintf(stderr,
+                ">Z %llu graphs converted from %s to %s in %3.2f sec.\n",
                 nin,infilename,outfilename,t);
+    }
 
     exit(0);
 }

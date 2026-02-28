@@ -213,7 +213,7 @@ void WritePar(FILE *f, int vpar[], int n)
        else {
           for (p = one; j > 0; j /= 10)
               *(p++) = '0' + j%10;
-          while (--p >= one) *(pout++) = *p;
+          while (p > one) *(pout++) = *--p;
        }
        if (i < nv) *(pout++) = ' ';
        else       *(pout++) = '\n';
@@ -244,7 +244,7 @@ WriteLev(FILE *f, int vpar[], int n)
        else {
           for (p = one; j > 0; j /= 10)
               *(p++) = '0' + j%10;
-          while (--p >= one) *(pout++) = *p;
+          while (p > one) *(pout++) = *--p;
        }
        if (i < nv) *(pout++) = ' ';
        else       *(pout++) = '\n';

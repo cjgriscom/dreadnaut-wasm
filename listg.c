@@ -285,14 +285,11 @@ static void
 putve(FILE *f, unsigned long id, graph *g, boolean digraph, int m, int n)
 /* Write the numbers of vertices and edges */
 {
-    unsigned long ne;
-    setword x,*pg;
+    unsigned long long ne;
 
-    ne = 0;
-    for (pg = g + m*(size_t)n; --pg >= g;)
-        if ((x = *pg) != 0) ne += POPCOUNT(x);
+    SETSIZE(ne,g,(size_t)m*(size_t)n);
 
-    fprintf(f,"Graph %lu has %d vertices and %lu edges.\n",id,n,
+    fprintf(f,"Graph %lu has %d vertices and %llu edges.\n",id,n,
             (digraph?ne:ne/2));
 }
 
@@ -359,18 +356,16 @@ putbliss(FILE *f, unsigned long id, boolean qswitch, graph *g, int m, int n)
 /* Write the graph in DIMACS format, according to
  *      http://www.tcs.hut.fi/Software/bliss/fileformat.shtml */
 {
-    unsigned long ne;
-    setword x,*pg;
+    unsigned long long ne;
+    setword *pg;
     int i,j;
 
-    ne = 0;
-    for (pg = g + m*(size_t)n; --pg >= g;)
-        if ((x = *pg) != 0) ne += POPCOUNT(x);
+    SETSIZE(ne,g,(size_t)m*(size_t)n);
     ne /= 2;
 
     if (!qswitch) fprintf(f,"c Graph %lu\n",id);
     else          fprintf(f,"\n");
-    fprintf(f,"p edge %d %lu\n",n,ne);
+    fprintf(f,"p edge %d %llu\n",n,ne);
 
     for (i = 0, pg = g; i < n; ++i, pg += m)
         for (j = nextelement(pg,m,i); j >= 0; j = nextelement(pg,m,j))

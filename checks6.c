@@ -1,6 +1,6 @@
 /* checks6.c; May 2005 */
 
-#define USAGE "checks6 [-p#:#] [w] [infile [outfile]]"
+#define USAGE "checks6 [-p#:#] [-w] [infile [outfile]]"
 
 #define HELPTEXT \
 "  Check a file of graphs, optionally write corrected version\n\
@@ -8,7 +8,7 @@
      -p# -p#:#  \n\
          Specify range of input lines (first is 1)\n\
 \n\
-     -w  Write corrected graphs (default is not to write)\n\
+     -w  Write corrected graphs (default is to not write)\n\
          A header is written if there is one in the input.\n"
 
 /***********************************************************************/
@@ -121,6 +121,8 @@ seemsbad(char *s)
         else
             return FALSE;
     }
+
+    return FALSE;
 }
 
 /***********************************************************************/

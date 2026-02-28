@@ -565,8 +565,7 @@ stringtograph(char *s, graph *g, int m)
     if (TIMESWORDSIZE(m) < n)
         GT_ABORT(">E stringtograph: impossible m value");
 
-    for (ii = m*(size_t)n; --ii > 0;) g[ii] = 0;
-    g[0] = 0;
+    for (ii = 0; ii < (size_t)m*(size_t)n; ++ii) g[ii] = 0;
 
     if (s[0] != ':' && s[0] != '&')       /* graph6 format */
     {
