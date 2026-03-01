@@ -127,6 +127,51 @@
 #include <signal.h>
 #endif
 
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+
+EM_ASYNC_JS(int, worker_getc_async, (), {
+  if (!globalThis.inputBuffer)
+    globalThis.inputBuffer = [];
+  if (globalThis.inputBuffer.length == 0) {
+    if (globalThis.accumulatedOut) {
+      if (globalThis.accumulatedOut.length > 0) {
+        var msg = {};
+        msg.type = 'output';
+        msg.data = globalThis.accumulatedOut;
+        globalThis.postWorkerMessage(msg);
+        globalThis.accumulatedOut = "";
+      }
+    }
+    return new Promise(
+        function(resolve) { globalThis.resolveInput = resolve; });
+  }
+  return globalThis.inputBuffer.shift();
+});
+
+static int pushback_char = EOF;
+
+int my_getc(FILE *f) {
+  if (f == stdin) {
+    if (pushback_char != EOF) {
+      int c = pushback_char;
+      pushback_char = EOF;
+      return c;
+    }
+    return worker_getc_async();
+  }
+  return (fgetc)(f);
+}
+
+int my_ungetc(int c, FILE *f) {
+  if (f == stdin) {
+    pushback_char = c;
+    return c;
+  }
+  return (ungetc)(c, f);
+}
+#endif
+
 #define USAGE "dreadnaut [-o options]"
 
 #define HELPTEXT \
@@ -142,8 +187,14 @@
 #define PM(x) ((x) ? '+' : '-')
 #define SS(n,sing,plur)  (n),((n)==1?(sing):(plur))
 #define WORKSIZE 500
+
+#ifdef __EMSCRIPTEN__ /* in browser cli avoid garbling output with prompt */
+#define FLUSHANDPROMPT \
+   do { flushline(INFILE); if (prompt) fprintf(PROMPTFILE,""); } while (0)
+#else
 #define FLUSHANDPROMPT \
    do { flushline(INFILE); if (prompt) fprintf(PROMPTFILE,"> "); } while (0)
+#endif
 
 #define SORT_OF_SORT 2
 #define SORT_NAME sort2ints

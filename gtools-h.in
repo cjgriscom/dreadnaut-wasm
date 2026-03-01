@@ -350,4 +350,17 @@ CPUDEFS
 
 /* @edit_msg@ */
 
+#ifdef __EMSCRIPTEN__
+extern int my_getc(FILE *f);
+extern int my_ungetc(int c, FILE *f);
+
+#undef getc
+#define getc my_getc
+#undef ungetc
+#define ungetc my_ungetc
+#undef fgetc
+#define fgetc my_getc
+
+#endif
+
 #endif /* _GTOOLS_H_  */
